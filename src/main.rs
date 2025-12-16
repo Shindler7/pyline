@@ -6,23 +6,24 @@
 //! Shindler7, 2025.
 mod config;
 mod counter;
+mod errors;
 mod scanner;
+mod tools;
 
-use crate::scanner::{collect_files, FileListFormatter};
 use counter::CodeStats;
-use scanner::scan_files;
+use scanner::{collect_files, FileListFormatter};
 use std::env;
 use std::path::PathBuf;
 use std::process::exit;
 
 #[tokio::main]
 async fn main() {
+    // Подготовка древа файлов.
     let path = get_current_dir();
-    // let files = scan_files(path).unwrap();
     let files = collect_files(path).await.unwrap();
-
     println!("This is files:\n{}", files.format());
 
+    // Анализ файлов.
     let code_stats = CodeStats::new().parsing_files(files).await.unwrap();
 
     println!("Статистика:\n{}", code_stats)

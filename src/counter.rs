@@ -4,7 +4,7 @@ use crate::scanner::FileAnalysis;
 use std::fmt::{Display, Formatter};
 
 /// Статистика подсчёта строк кода.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct CodeStats {
     /// Количество файлов.
     pub files_count: usize,
@@ -25,17 +25,6 @@ impl Display for CodeStats {
             write!(f, "\nНе удалось прочитать файлов: {}", self.files_invalid)?;
         }
         write!(f, "")
-    }
-}
-
-impl Default for CodeStats {
-    fn default() -> Self {
-        Self {
-            files_count: 0,
-            files_invalid: 0,
-            total_lines: 0,
-            code_lines: 0,
-        }
     }
 }
 
