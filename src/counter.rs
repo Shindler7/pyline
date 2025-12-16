@@ -36,13 +36,17 @@ impl CodeStats {
 
     /// Запустить парсинг переданного списка файлов.
     pub async fn parsing_files(
-        &self,
+        &mut self,
         file_list: Vec<FileAnalysis>,
     ) -> Result<CodeStats, Box<dyn std::error::Error>> {
         let mut stats = CodeStats::new();
         if file_list.is_empty() {
             return Ok(stats);
         }
+
+        self.files_count = file_list.len();
+
+        // Диспетчеризация чтения файлов.
 
         Ok(stats)
     }

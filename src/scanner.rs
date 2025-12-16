@@ -1,37 +1,12 @@
 //! Сканирование и отбор файлов для расчётов.
 
+use crate::lang::python::{TECHNICAL_DIRS, VALID_EXTENSIONS};
 use crate::tools::format_file_size_alt;
 use async_recursion::async_recursion;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::PathBuf;
 use tokio::fs;
-
-const TECHNICAL_DIRS: &[&str] = &[
-    "venv",
-    ".venv",
-    "env",
-    ".env",
-    "__pycache__",
-    ".git",
-    ".hg",
-    ".svn",
-    ".mypy_cache",
-    ".pytest_cache",
-    ".tox",
-    ".idea",
-    ".vscode",
-    "build",
-    "dist",
-    ".eggs",
-    ".cache",
-];
-
-#[cfg(debug_assertions)]
-const VALID_EXTENSIONS: &[&str] = &["rs"];
-
-#[cfg(not(debug_assertions))]
-const VALID_EXTENSIONS: &[&str] = &["py"];
 
 pub trait FileListFormatter {
     fn format(&self) -> String;
@@ -51,6 +26,7 @@ impl FileListFormatter for Vec<FileAnalysis> {
 }
 
 /// Структура статистики отобранных для сканирования файлов.
+#[derive(Default)]
 pub struct FileAnalysis {
     /// Путь к файлу.
     pub path: PathBuf,
@@ -68,7 +44,7 @@ impl Debug for FileAnalysis {
             f,
             "FileAnalysis [{} ({})]",
             self.path.display(),
-            format_file_size_alt(self.size)
+            format_file_size_alt(self.size).unwrap_or("н/д".to_string())
         )
     }
 }
@@ -79,7 +55,7 @@ impl Display for FileAnalysis {
             f,
             "FileAnalysis ({} ({}))",
             self.path.display(),
-            format_file_size_alt(self.size)
+            format_file_size_alt(self.size).unwrap_or("н/д".to_string())
         )
     }
 }
@@ -90,18 +66,14 @@ impl FileAnalysis {
         Self {
             path,
             size,
-            lines: 0,
-            code_lines: 0,
+            ..Default::default()
         }
     }
 }
 
 /// Отобрать по заданному пути все файлы, соответствующие критериям.
-///
-/// Args:
-/// * path — целевой путь для поиска файлов.
 pub async fn collect_files(path: PathBuf) -> Result<Vec<FileAnalysis>, Box<dyn Error>> {
-    let mut files: Vec<FileAnalysis> = mapping_dirs(&path).await?;
+    let files: Vec<FileAnalysis> = mapping_dirs(&path).await?;
     Ok(files)
 }
 
@@ -115,11 +87,15 @@ async fn mapping_dirs(path: &PathBuf) -> Result<Vec<FileAnalysis>, Box<dyn Error
         let elem = catalog_elems.path();
 
         if elem.is_dir() {
+            // Проработка дерева каталогов.
             if is_valid_dir(&elem) {
-                let sub_files = mapping_dirs(&elem).await?;
-                files.extend(sub_files);
+                let sub_files = mapping_dirs(&elem).await;
+                if sub_files.is_ok() {
+                    files.extend(sub_files?);
+                }
             }
         } else {
+            // Отдельные файлы.
             if is_valid_extension(&elem) {
                 let length_file = length_file(&elem);
                 files.push(FileAnalysis::new(elem, length_file));
@@ -145,8 +121,6 @@ fn is_valid_dir(dir: &PathBuf) -> bool {
 
 /// Проверка на соответствие имени директории константам технических директорий.
 fn is_technical_dir(dir_name: &str) -> bool {
-    // Список типов директорий, которые считаются техническими.
-
     TECHNICAL_DIRS.contains(&dir_name.to_lowercase().as_str())
 }
 

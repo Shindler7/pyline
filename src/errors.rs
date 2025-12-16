@@ -7,6 +7,7 @@ use std::fmt::{Display, Formatter};
 pub enum PyLineError {
     ScannerError { description: String },
     CounterError { description: String },
+    ToolsError { description: String },
 }
 
 impl Error for PyLineError {}
@@ -19,6 +20,9 @@ impl Display for PyLineError {
             }
             Self::CounterError { description } => {
                 write!(f, "Ошибка парсинга файла: {}", description)
+            }
+            Self::ToolsError { description } => {
+                write!(f, "Ошибка утилиты: {}", description)
             }
         }
     }

@@ -9,6 +9,7 @@ mod counter;
 mod errors;
 mod scanner;
 mod tools;
+mod lang;
 
 use counter::CodeStats;
 use scanner::{collect_files, FileListFormatter};
@@ -21,12 +22,16 @@ async fn main() {
     // Подготовка древа файлов.
     let path = get_current_dir();
     let files = collect_files(path).await.unwrap();
-    println!("This is files:\n{}", files.format());
+    println!("Найденные файлы:\n{}", files.format());
 
     // Анализ файлов.
     let code_stats = CodeStats::new().parsing_files(files).await.unwrap();
 
-    println!("Статистика:\n{}", code_stats)
+    println!("Статистика:\n{}", code_stats);
+    
+    // Тестировочные сопровождения
+    let m = lang::python::Python::new();
+    println!("{:?}", m);
 }
 
 /// Вернуть текущую директорию.
