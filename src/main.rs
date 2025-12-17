@@ -4,40 +4,49 @@
 //! С помощью пользователя или самостоятельно исключаются зависимости.
 //!
 //! Shindler7, 2025.
+mod cli;
 mod config;
 mod counter;
 mod errors;
+mod lang;
 mod scanner;
 mod tools;
-mod lang;
 
 use counter::CodeStats;
-use scanner::{collect_files, FileListFormatter};
-use std::env;
-use std::path::PathBuf;
+use scanner::collect_files;
 use std::process::exit;
-
 #[tokio::main]
 async fn main() {
     // Подготовка древа файлов.
-    let path = get_current_dir();
-    let files = collect_files(path).await.unwrap();
-    println!("Найденные файлы:\n{}", files.format());
+    let path = cli::read_cmd_args();
+    println!(
+        "OK.\nThe files in the directory are being examined: {}",
+        path.display()
+    );
+
+    print!("\nGathering files for analysis... ");
+    let files = collect_files(path).await.unwrap_or_else(|err| {
+        print!("ERROR: {}", err);
+        exit(1);
+    });
+    if files.is_empty() {
+        print!("NO FILES.");
+        exit(0);
+    } else {
+        print!("OK.");
+        println!("\nSuccessfully gathered {} files", files.len());
+    }
+    // println!("\nDiscovered files:\n{}", files.format());
 
     // Анализ файлов.
-    let code_stats = CodeStats::new().parsing_files(files).await.unwrap();
-
-    println!("Статистика:\n{}", code_stats);
-    
-    // Тестировочные сопровождения
-    let m = lang::python::Python::new();
-    println!("{:?}", m);
-}
-
-/// Вернуть текущую директорию.
-fn get_current_dir() -> PathBuf {
-    env::current_dir().unwrap_or_else(|err| {
-        eprintln!("Не удалось определить текущую директорию: {}", err);
-        exit(1);
-    })
+    print!("\nGathering code stats... ");
+    let code_stats = CodeStats::new()
+        .parsing_files(files)
+        .await
+        .unwrap_or_else(|err| {
+            print!("ERROR: {}", err);
+            exit(1);
+        });
+    print!("OK.");
+    println!("\n{}\n", code_stats)
 }
