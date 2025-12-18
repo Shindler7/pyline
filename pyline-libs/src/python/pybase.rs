@@ -23,6 +23,24 @@ pub const TECHNICAL_DIRS: &[&str] = &[
 ];
 pub const VALID_EXTENSIONS: &[&str] = &["py"];
 
+pub const TRIPLE_SINGLE: &str = "'''";
+pub const TRIPLE_DOUBLE: &str = "\"\"\"";
+
+#[derive(Copy, Clone)]
+pub enum QuoteType {
+    TripleSingle,
+    TripleDouble,
+}
+
+impl QuoteType {
+    pub const fn as_str(&self) -> &'static str {
+        match self {
+            QuoteType::TripleSingle => TRIPLE_SINGLE,
+            QuoteType::TripleDouble => TRIPLE_DOUBLE,
+        }
+    }
+}
+
 pub const PYTHON_KEYWORDS: [&str; 35] = [
     "False", "None", "True", "and", "as", "assert", "async", "await", "break", "class", "continue",
     "def", "del", "elif", "else", "except", "finally", "for", "from", "global", "if", "import",
@@ -63,10 +81,11 @@ impl Python {
     /// ```
     pub fn update_with(&mut self, other: &Self) {
         for (keyword, count) in &other.map_keywords {
-            if *count > 0 {
-                if let Some(self_count) = self.map_keywords.get_mut(keyword) {
-                    *self_count += count;
-                }
+            if *count > 0
+                && let Some(self_count) = self.map_keywords.get_mut(keyword)
+            {
+                *self_count += count;
+
                 // Если ключевого слова нет в self.map_keywords, игнорируем.
             }
         }

@@ -35,7 +35,7 @@ async fn main() {
 
     // Анализ файлов.
     print!("\nGathering code stats... ");
-    let code_stats = CodeStatsPython::new()
+    let code_stats = CodeStatsPython::new_with_keywords()
         .parsing_files(files)
         .await
         .unwrap_or_else(|err| {

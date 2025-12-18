@@ -1,11 +1,11 @@
 //! Сканирование и отбор файлов для расчётов.
 
-use crate::python::python::{TECHNICAL_DIRS, VALID_EXTENSIONS};
+use crate::python::pybase::{TECHNICAL_DIRS, VALID_EXTENSIONS};
 use crate::tools::format_file_size_alt;
 use async_recursion::async_recursion;
 use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use tokio::fs;
 
 pub trait FileListFormatter {
@@ -107,12 +107,12 @@ async fn mapping_dirs(path: &PathBuf) -> Result<Vec<FileAnalysis>, Box<dyn Error
 }
 
 /// Определить размер файла.
-fn length_file(file: &PathBuf) -> u64 {
+fn length_file(file: &Path) -> u64 {
     file.metadata().unwrap().len()
 }
 
 /// Проверка, что директория не в исключённых из поиска.
-fn is_valid_dir(dir: &PathBuf) -> bool {
+fn is_valid_dir(dir: &Path) -> bool {
     dir.file_name()
         .and_then(|s| s.to_str())
         .map(|name| !(name.starts_with(".") || name.starts_with("~") || is_technical_dir(name)))
@@ -125,10 +125,10 @@ fn is_technical_dir(dir_name: &str) -> bool {
 }
 
 /// Проверка, что расширение файла соответствует искомому.
-fn is_valid_extension(file: &PathBuf) -> bool {
+fn is_valid_extension(file: &Path) -> bool {
     file.extension()
         .and_then(|s| s.to_str())
-        .map(|name| is_correct_ext(name))
+        .map(is_correct_ext)
         .unwrap_or(false)
 }
 

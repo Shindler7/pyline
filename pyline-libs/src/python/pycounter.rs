@@ -1,18 +1,17 @@
 //! Подсчёт строк кода.
 
 use crate::codestats::CodeStatsPython;
+use crate::python::pybase::QuoteType;
 use crate::scanner::FileAnalysis;
 use futures::future::join_all;
 use tokio::fs::File;
-use tokio::io::AsyncReadExt;
-
-const BUFFER_SIZE: usize = 1024 * 8;
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 /// Методы подсчёта статистики строк кода.
 impl CodeStatsPython {
     /// Создание представления под обработку одного файла.
     fn new_one_file() -> Self {
-        let mut codestats = CodeStatsPython::new();
+        let mut codestats = CodeStatsPython::new_with_keywords();
         codestats.count_file();
         codestats
     }
@@ -37,7 +36,7 @@ impl CodeStatsPython {
     async fn parse_manager(&mut self, file_list: Vec<FileAnalysis>) {
         let tasks = file_list
             .iter()
-            .map(|file| Self::parse_file(file))
+            .map(Self::parse_file)
             .collect::<Vec<_>>();
 
         let results = join_all(tasks).await;
@@ -50,44 +49,101 @@ impl CodeStatsPython {
     async fn parse_file(file: &FileAnalysis) -> CodeStatsPython {
         let mut result = CodeStatsPython::new_one_file();
 
-        // Открытие файла.
-        let mut code_file = match File::open(&file.path).await {
-            Ok(result) => result,
+        let maybe_file = File::open(&file.path).await;
+        let code_file = match maybe_file {
+            Ok(f) => f,
             Err(_) => {
                 result.count_invalid_file();
                 return result;
             }
         };
 
-        // Обработка содержимого.
-        let mut chunk = vec![0; BUFFER_SIZE];
-        loop {
-            let len = match code_file.read(&mut chunk).await {
-                Ok(len) => len,
-                Err(_) => {
-                    result.count_invalid_file();
-                    return result;
-                }
-            };
-
-            if len == 0 {
-                break;
-            }
-
-            // Передача данных для парсинга сайта.
-            Self::parse_codeline(&chunk, len, &mut result);
-        }
+        let cursor = BufReader::new(code_file);
+        Self::parse_codeline(cursor, &mut result).await;
 
         result
     }
 
     /// Функция, которая отвечает непосредственно за разбор кода.
-    fn parse_codeline(chunk: &Vec<u8>, len_chunk: usize, code_stats: &mut CodeStatsPython) {
-        for &b in &chunk[..len_chunk] {
-            match b {
-                b'\n' => code_stats.count_line(),
-                _ => continue,
+    async fn parse_codeline(cursor: BufReader<File>, code_stats: &mut CodeStatsPython) {
+        let mut triple_quotes: Option<QuoteType> = None;
+        let mut inside_triple_quotes = false;
+
+        let mut lines = cursor.lines();
+        while let Ok(Some(line)) = lines.next_line().await {
+            code_stats.count_line();
+
+            let trimmed = line.trim();
+
+            // Проверка тройных кавычек.
+            if inside_triple_quotes {
+                // Входные тройные кавычки ранее были найдены. Проверяем, есть ли выходные.
+                if are_there_quotation(trimmed, triple_quotes) {
+                    triple_quotes = None;
+                    inside_triple_quotes = false;
+                }
+                continue;
+            } else {
+                // Тройные кавычки могут быть в одну строку: """docstrings this""".
+                if is_triple_quotes_line(trimmed) {
+                    continue;
+                }
+
+                if let Some(quotes) = check_quotes_on_start(trimmed) {
+                    triple_quotes = Some(quotes);
+                    inside_triple_quotes = true;
+                    continue;
+                }
             }
+
+            // Игнорируем пустые строки и очевидные комментарии в коде.
+            if is_empty_or_comment(&line) {
+                continue;
+            }
+
+            // Отсеяли комментарии, пустые строки, тройные кавычки. Скорее всего, здесь код.
+            code_stats.count_code_line();
+
+            // Разбор строки кода на составляющие.
         }
     }
+}
+
+/// Проверка на пустую линию или линию закрытую комментарием.
+fn is_empty_or_comment(line_trim: &str) -> bool {
+    line_trim.is_empty() || line_trim.starts_with("#")
+}
+
+/// Проверка на строку закрытую тройными кавычками.
+///
+/// ```python
+/// """This is docstring"""
+/// ```
+fn is_triple_quotes_line(line_trim: &str) -> bool {
+    [
+        QuoteType::TripleSingle.as_str(),
+        QuoteType::TripleDouble.as_str(),
+    ]
+    .iter()
+    .any(|triple| line_trim.starts_with(triple) && line_trim.ends_with(triple))
+}
+
+/// Проверка, что строка начинается с тройных кавычек.
+/// Если кавычки есть, возвращает найденный тип.
+fn check_quotes_on_start(line_trim: &str) -> Option<QuoteType> {
+    if line_trim.starts_with(QuoteType::TripleSingle.as_str()) {
+        Some(QuoteType::TripleSingle)
+    } else if line_trim.starts_with(QuoteType::TripleDouble.as_str()) {
+        Some(QuoteType::TripleDouble)
+    } else {
+        None
+    }
+}
+
+/// Проверка, что в переданной строке есть заданные кавычки.
+///
+/// Функция вызывается, когда ранее тройные кавычки были обнаружены и идёт поиск выхода.
+/// Закрывающие кавычки могут быть в начале строки и в конце строки.
+fn are_there_quotation(line_trim: &str, quotes: Option<QuoteType>) -> bool {
+    quotes.is_none_or(|q| line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str()))
 }

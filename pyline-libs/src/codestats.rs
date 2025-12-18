@@ -1,6 +1,6 @@
 //! Структуры и методы для парсинга языков.
 
-use crate::python::python::Python;
+use crate::python::pybase::Python;
 use std::fmt::{Display, Formatter};
 
 /// Статистика подсчёта строк кода.
@@ -53,7 +53,15 @@ impl Display for CodeStatsPython {
 }
 
 impl CodeStatsPython {
+    /// Собрать экземпляр со значениями по-умолчанию. При этом `Keywords` будет пустым вектором.  
     pub fn new() -> Self {
+        Self {
+            ..Default::default()
+        }
+    }
+    
+    /// Собрать экземпляр с наполненным полем `keywords`.
+    pub fn new_with_keywords() -> Self {
         Self {
             keywords: Python::new(),
             ..Default::default()
