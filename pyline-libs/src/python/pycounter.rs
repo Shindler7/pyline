@@ -34,10 +34,7 @@ impl CodeStatsPython {
 
     /// Организатор обработки файлов в асинхронном режиме.
     async fn parse_manager(&mut self, file_list: Vec<FileAnalysis>) {
-        let tasks = file_list
-            .iter()
-            .map(Self::parse_file)
-            .collect::<Vec<_>>();
+        let tasks = file_list.iter().map(Self::parse_file).collect::<Vec<_>>();
 
         let results = join_all(tasks).await;
 
@@ -145,5 +142,8 @@ fn check_quotes_on_start(line_trim: &str) -> Option<QuoteType> {
 /// Функция вызывается, когда ранее тройные кавычки были обнаружены и идёт поиск выхода.
 /// Закрывающие кавычки могут быть в начале строки и в конце строки.
 fn are_there_quotation(line_trim: &str, quotes: Option<QuoteType>) -> bool {
-    quotes.is_none_or(|q| line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str()))
+    // quotes.is_none_or(|q| line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str()))
+    quotes.map_or(false, |q| {
+        line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str())
+    })
 }
