@@ -6,14 +6,9 @@
 //! Shindler7, 2025.
 mod cli;
 mod config;
-mod counter;
-mod errors;
-mod lang;
-mod scanner;
-mod tools;
 
-use counter::CodeStats;
-use scanner::collect_files;
+use pyline_libs::codestats::CodeStatsPython;
+use pyline_libs::scanner::collect_files;
 use std::process::exit;
 #[tokio::main]
 async fn main() {
@@ -40,7 +35,7 @@ async fn main() {
 
     // Анализ файлов.
     print!("\nGathering code stats... ");
-    let code_stats = CodeStats::new()
+    let code_stats = CodeStatsPython::new()
         .parsing_files(files)
         .await
         .unwrap_or_else(|err| {

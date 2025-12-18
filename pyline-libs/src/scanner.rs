@@ -1,6 +1,6 @@
 //! Сканирование и отбор файлов для расчётов.
 
-use crate::lang::python::{TECHNICAL_DIRS, VALID_EXTENSIONS};
+use crate::python::python::{TECHNICAL_DIRS, VALID_EXTENSIONS};
 use crate::tools::format_file_size_alt;
 use async_recursion::async_recursion;
 use std::error::Error;

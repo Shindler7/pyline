@@ -1,10 +1,3 @@
-[package]
-name = "pyline"
-version = "0.1.0"
-edition = "2024"
-
-[dependencies]
-async-recursion = "1.1.1"
-clap = { version = "4.5.53", features = ["derive"] }
-tokio = { version = "1.48.0", features = ["full"] }
-futures = "0.3.31"
+[workspace]
+members = ["pyline-cli", "pyline-libs"]
+resolver = "2"
