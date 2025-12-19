@@ -59,7 +59,7 @@ impl CodeStatsPython {
             ..Default::default()
         }
     }
-    
+
     /// Собрать экземпляр с наполненным полем `keywords`.
     pub fn new_with_keywords() -> Self {
         Self {
@@ -76,6 +76,16 @@ impl CodeStatsPython {
     // Получить мутабельную ссылку на базовую структуру.
     pub fn stats_mut(&mut self) -> &mut CodeStats {
         &mut self.stats
+    }
+
+    // Получить ссылку на структуру Python поля `keywords`.
+    pub fn keywords(&self) -> &Python {
+        &self.keywords
+    }
+
+    // Получить мутабельную ссылку на структуру Python поля `keywords`.
+    pub fn keywords_mut(&mut self) -> &mut Python {
+        &mut self.keywords
     }
 
     /// Объединение значений с другим экземпляром структуры.

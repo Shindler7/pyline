@@ -1,7 +1,8 @@
-//! Общие методы поддержки, утилиты, инструменты.
+//! Supporting utility library.
+
 use crate::errors::PyLineError;
 
-/// Преобразование байтов в удобно воспринимаемые единицы размера.
+/// Converts a number of bytes into human-readable size units.
 pub fn format_file_size_alt(bytes: u64) -> Result<String, PyLineError> {
     const UNITS: &[(&str, u64)] = &[
         ("б", 1),
@@ -9,10 +10,6 @@ pub fn format_file_size_alt(bytes: u64) -> Result<String, PyLineError> {
         ("Мб", 1024_u64.pow(2)),
         ("Гб", 1024_u64.pow(3)),
         ("Тб", 1024_u64.pow(4)),
-        // ("ПБ", 1024_u64.pow(5)),
-        // ("ЭБ", 1024_u64.pow(6)),
-        // ("ЗБ", 1024_u64.pow(7)),
-        // ("ЙБ", 1024_u64.pow(8)),
     ];
 
     if bytes == 0 {

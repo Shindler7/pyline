@@ -1,4 +1,4 @@
-//! Custom error types module.
+//! Собственные ошибки приложения.
 
 use std::error::Error;
 use std::fmt::{Display, Formatter};

@@ -1,7 +1,7 @@
 //! Подсчёт строк кода.
 
 use crate::codestats::CodeStatsPython;
-use crate::python::pybase::QuoteType;
+use crate::python::pybase::{Python, QuoteType};
 use crate::scanner::FileAnalysis;
 use futures::future::join_all;
 use tokio::fs::File;
@@ -56,13 +56,13 @@ impl CodeStatsPython {
         };
 
         let cursor = BufReader::new(code_file);
-        Self::parse_codeline(cursor, &mut result).await;
+        Self::parse_code_lines(cursor, &mut result).await;
 
         result
     }
 
     /// Функция, которая отвечает непосредственно за разбор кода.
-    async fn parse_codeline(cursor: BufReader<File>, code_stats: &mut CodeStatsPython) {
+    async fn parse_code_lines(cursor: BufReader<File>, code_stats: &mut CodeStatsPython) {
         let mut triple_quotes: Option<QuoteType> = None;
         let mut inside_triple_quotes = false;
 
@@ -75,18 +75,18 @@ impl CodeStatsPython {
             // Проверка тройных кавычек.
             if inside_triple_quotes {
                 // Входные тройные кавычки ранее были найдены. Проверяем, есть ли выходные.
-                if are_there_quotation(trimmed, triple_quotes) {
+                if Self::are_there_quotation(trimmed, triple_quotes) {
                     triple_quotes = None;
                     inside_triple_quotes = false;
                 }
                 continue;
             } else {
                 // Тройные кавычки могут быть в одну строку: """docstrings this""".
-                if is_triple_quotes_line(trimmed) {
+                if Self::is_triple_quotes_line(trimmed) {
                     continue;
                 }
 
-                if let Some(quotes) = check_quotes_on_start(trimmed) {
+                if let Some(quotes) = Self::check_quotes_on_start(trimmed) {
                     triple_quotes = Some(quotes);
                     inside_triple_quotes = true;
                     continue;
@@ -94,7 +94,7 @@ impl CodeStatsPython {
             }
 
             // Игнорируем пустые строки и очевидные комментарии в коде.
-            if is_empty_or_comment(&line) {
+            if Self::is_empty_or_comment(&line) {
                 continue;
             }
 
@@ -102,48 +102,51 @@ impl CodeStatsPython {
             code_stats.count_code_line();
 
             // Разбор строки кода на составляющие.
+            Self::parse_code_line(trimmed, code_stats.keywords_mut())
         }
     }
-}
 
-/// Проверка на пустую линию или линию закрытую комментарием.
-fn is_empty_or_comment(line_trim: &str) -> bool {
-    line_trim.is_empty() || line_trim.starts_with("#")
-}
-
-/// Проверка на строку закрытую тройными кавычками.
-///
-/// ```python
-/// """This is docstring"""
-/// ```
-fn is_triple_quotes_line(line_trim: &str) -> bool {
-    [
-        QuoteType::TripleSingle.as_str(),
-        QuoteType::TripleDouble.as_str(),
-    ]
-    .iter()
-    .any(|triple| line_trim.starts_with(triple) && line_trim.ends_with(triple))
-}
-
-/// Проверка, что строка начинается с тройных кавычек.
-/// Если кавычки есть, возвращает найденный тип.
-fn check_quotes_on_start(line_trim: &str) -> Option<QuoteType> {
-    if line_trim.starts_with(QuoteType::TripleSingle.as_str()) {
-        Some(QuoteType::TripleSingle)
-    } else if line_trim.starts_with(QuoteType::TripleDouble.as_str()) {
-        Some(QuoteType::TripleDouble)
-    } else {
-        None
+    /// Проверка на пустую линию или линию закрытую комментарием.
+    fn is_empty_or_comment(line_trim: &str) -> bool {
+        line_trim.is_empty() || line_trim.starts_with("#")
     }
-}
 
-/// Проверка, что в переданной строке есть заданные кавычки.
-///
-/// Функция вызывается, когда ранее тройные кавычки были обнаружены и идёт поиск выхода.
-/// Закрывающие кавычки могут быть в начале строки и в конце строки.
-fn are_there_quotation(line_trim: &str, quotes: Option<QuoteType>) -> bool {
-    // quotes.is_none_or(|q| line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str()))
-    quotes.map_or(false, |q| {
-        line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str())
-    })
+    /// Проверка на строку закрытую тройными кавычками.
+    ///
+    /// ```python
+    /// """This is docstring"""
+    /// ```
+    fn is_triple_quotes_line(line_trim: &str) -> bool {
+        [
+            QuoteType::TripleSingle.as_str(),
+            QuoteType::TripleDouble.as_str(),
+        ]
+        .iter()
+        .any(|triple| line_trim.starts_with(triple) && line_trim.ends_with(triple))
+    }
+
+    /// Проверка, что строка начинается с тройных кавычек.
+    /// Если кавычки есть, возвращает найденный тип.
+    fn check_quotes_on_start(line_trim: &str) -> Option<QuoteType> {
+        if line_trim.starts_with(QuoteType::TripleSingle.as_str()) {
+            Some(QuoteType::TripleSingle)
+        } else if line_trim.starts_with(QuoteType::TripleDouble.as_str()) {
+            Some(QuoteType::TripleDouble)
+        } else {
+            None
+        }
+    }
+
+    /// Проверка, что в переданной строке есть заданные кавычки.
+    ///
+    /// Функция вызывается, когда ранее тройные кавычки были обнаружены и идёт поиск выхода.
+    /// Закрывающие кавычки могут быть в начале строки и в конце строки.
+    fn are_there_quotation(line_trim: &str, quotes: Option<QuoteType>) -> bool {
+        quotes.is_some_and(|q| line_trim.starts_with(q.as_str()) || line_trim.ends_with(q.as_str()))
+    }
+
+    /// Разбор строки с кодом.
+    fn parse_code_line(line_trim: &str, python: &mut Python) {
+
+    }
 }

@@ -1,5 +1,6 @@
-pub mod errors;
-pub mod python;
-pub mod scanner;
-pub mod tools;
-pub mod codestats;
+//! API for parsing code files.
+
+mod utils;
+mod errors;
+mod file_collector;
+mod py;
