@@ -3,7 +3,7 @@
 use crate::errors::PyLineError;
 
 /// Converts a number of bytes into human-readable size units.
-pub fn format_file_size_alt(bytes: u64) -> Result<String, PyLineError> {
+pub fn format_file_size(bytes: u64) -> Result<String, PyLineError> {
     const UNITS: &[(&str, u64)] = &[
         ("б", 1),
         ("Кб", 1024),

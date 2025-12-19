@@ -7,12 +7,12 @@
 mod cli;
 mod config;
 
-use pyline_libs::codestats::CodeStatsPython;
-use pyline_libs::scanner::collect_files;
+use pyline_libs::files_collector::Collector;
+use pyline_libs::py::base::TECH_DIRS;
 use std::process::exit;
 #[tokio::main]
 async fn main() {
-    // Подготовка древа файлов.
+    // Building file tree structure.
     let path = cli::read_cmd_args();
     println!(
         "OK.\nThe files in the directory are being examined: {}",
@@ -20,10 +20,17 @@ async fn main() {
     );
 
     print!("\nGathering files for analysis... ");
-    let files = collect_files(path).await.unwrap_or_else(|err| {
-        print!("ERROR: {}", err);
-        exit(1);
-    });
+    let files = Collector::new(path)
+        .ignore_dot_dirs(true)
+        .extensions(["py"])
+        .exclude_dirs(["venv", "env"])
+        .complete()
+        .await
+        .unwrap_or_else(|error| {
+            eprint!("ERROR: {}", error);
+            exit(1);
+        });
+
     if files.is_empty() {
         print!("NO FILES.");
         exit(0);
@@ -31,17 +38,18 @@ async fn main() {
         print!("OK.");
         println!("\nSuccessfully gathered {} files", files.len());
     }
-    // println!("\nDiscovered files:\n{}", files.format());
 
-    // Анализ файлов.
-    print!("\nGathering code stats... ");
-    let code_stats = CodeStatsPython::new_with_keywords()
-        .parsing_files(files)
-        .await
-        .unwrap_or_else(|err| {
-            print!("ERROR: {}", err);
-            exit(1);
-        });
-    print!("OK.");
-    println!("\n{}\n", code_stats)
+    // println!("\nDiscovered files:\n{}", files.format());
+    //
+    // // Анализ файлов.
+    // print!("\nGathering code stats... ");
+    // let code_stats = CodeStatsPython::new_with_keywords()
+    //     .parsing_files(files)
+    //     .await
+    //     .unwrap_or_else(|err| {
+    //         print!("ERROR: {}", err);
+    //         exit(1);
+    //     });
+    // print!("OK.");
+    // println!("\n{}\n", code_stats)
 }

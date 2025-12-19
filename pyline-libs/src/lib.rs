@@ -1,6 +1,6 @@
 //! API for parsing code files.
 
 mod utils;
-mod errors;
-mod file_collector;
-mod py;
+pub mod errors;
+pub mod files_collector;
+pub mod py;

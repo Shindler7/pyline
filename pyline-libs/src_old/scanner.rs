@@ -93,7 +93,7 @@ async fn mapping_dirs(path: &PathBuf) -> Result<Vec<FileAnalysis>, Box<dyn Error
                 if sub_files.is_ok() {
                     files.extend(sub_files?);
                 }
-            }
+        }
         } else {
             // Отдельные файлы.
             if is_valid_extension(&elem) {
