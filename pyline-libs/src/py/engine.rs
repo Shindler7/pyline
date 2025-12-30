@@ -2,10 +2,11 @@ use crate::collector::FileData;
 use crate::errors::PyLineError;
 use crate::parser::Python;
 use crate::py::base::{PyKeywords, KEYWORDS};
+use crate::py::traits::PythonLineAnalysis;
 use crate::traits::CodeParsers;
 use futures::future::join_all;
 use tokio::fs::File;
-use tokio::io::BufReader;
+use tokio::io::{AsyncBufReadExt, BufReader, Lines};
 
 impl CodeParsers for Python {
     type Code = Python;
@@ -100,7 +101,29 @@ impl Python {
         cursor: BufReader<File>,
         code_stats: &mut Python,
     ) -> Result<(), PyLineError> {
+
+        let mut lines = cursor.lines();
+        while let Some(line) = lines.next_line().await? {
+            code_stats.count_line();
+
+            let trimmed = line.trim();
+            if line.is_non_code() {
+                continue;
+            }
+
+            Self::inside_triple_quotes(&lines);
+
+
+
+        }
+
+
+
         Ok(())
+    }
+
+    fn inside_triple_quotes(lines: &Lines<BufReader<File>>) {
+        todo!()
     }
 
     fn parse_keywords(keyword: &str) -> Option<PyKeywords> {

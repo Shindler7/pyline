@@ -1,6 +1,7 @@
 //! Module for selecting code files for subsequent analysis.
 
 use crate::errors::PyLineError;
+use crate::traits::FileDataExt;
 use crate::utils::format_file_size;
 use async_recursion::async_recursion;
 use std::fmt::{Debug, Display, Formatter};
@@ -17,6 +18,16 @@ impl FileData {
     pub fn new(path: PathBuf, bytes: u64) -> Self {
         Self { path, bytes }
     }
+
+    /// Returns a detailed string representation suitable for verbose output.
+    pub fn verbose_display(&self) -> String {
+        format!(
+            "File: {}\n  size: {} bytes ({})\n",
+            self.path.display(),
+            self.bytes,
+            format_file_size(self.bytes).unwrap_or("n/a".to_string())
+        )
+    }
 }
 
 impl Display for FileData {
@@ -27,6 +38,15 @@ impl Display for FileData {
             self.path.display(),
             format_file_size(self.bytes).unwrap_or("n/a".to_string())
         )
+    }
+}
+
+impl FileDataExt for Vec<FileData> {
+    fn join_verbose(&self, sep: &str) -> String {
+        self.iter()
+            .map(|f| f.verbose_display())
+            .collect::<Vec<_>>()
+            .join(sep)
     }
 }
 

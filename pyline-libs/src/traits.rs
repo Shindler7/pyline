@@ -41,3 +41,31 @@ pub trait CodeParsers {
     /// Increment the code_lines value by 1.
     fn count_code_line(&mut self);
 }
+
+/// Extension trait for collections of [`FileData`] providing verbose
+/// formatting utilities.
+///
+/// This trait adds methods to format file data collections with detailed
+/// information suitable for verbose output modes. It can be implemented for
+/// any collection type containing [`FileData`] instances.
+///
+/// # Examples
+///
+/// ```no_run
+/// use std::path::PathBuf;
+/// use pyline_libs::traits::FileDataExt;
+/// use pyline_libs::collector::FileData;
+///
+/// let path = PathBuf::from("/test.py");
+///
+/// let files: Vec<FileData> = vec!(FileData::new(path, 999)); // ... get files
+/// let verbose_list = files.join_verbose("\n");
+/// println!("Files:\n{}", verbose_list);
+/// ```
+pub trait FileDataExt {
+    /// Joins file data items into a single string with detailed information.
+    ///
+    /// Each file is represented using its [`verbose_display`] method,
+    /// and items are separated by the specified delimiter.
+    fn join_verbose(&self, sep: &str) -> String;
+}

@@ -4,11 +4,11 @@
 //! Produces statistical analysis of Python keyword usage.
 //!
 //! Shindler7, 2025.
-use pyline_libs::traits::CodeParsers;
+use pyline_libs::traits::{CodeParsers, FileDataExt};
 mod cli;
 mod config;
 
-use crate::cli::ArgsResult;
+use crate::cli::{ArgsResult, CodeLang};
 use pyline_libs::collector::{Collector, FileData};
 use pyline_libs::errors::PyLineError;
 use pyline_libs::parser::Python;
@@ -23,12 +23,17 @@ async fn main() {
 }
 
 async fn run() -> Result<(), PyLineError> {
-    let cli_result = cli::read_cmd_args();
+    let cli_result = cli::read_cmd_args().normalize_by_lang();
 
-    println!(
-        "OK.\nThe files in the directory are being examined: {}",
-        cli_result.path.display()
-    );
+    if cli_result.verbose {
+        println!("{}", cli_result.verbose_display());
+    } else {
+        println!("\nSelected language: {}\n", cli_result.lang);
+        println!(
+            "The files in the directory are being examined: {}",
+            cli_result.path.display()
+        );
+    }
 
     let files = collect_files(&cli_result).await?;
 
@@ -38,7 +43,11 @@ async fn run() -> Result<(), PyLineError> {
 
     println!(" Successfully gathered {} files.", files.len());
 
-    analyze_files(files).await?;
+    if cli_result.verbose {
+        println!("\n{}", files.join_verbose(""));
+    }
+
+    analyze_files(&cli_result, files).await?;
 
     Ok(())
 }
@@ -63,13 +72,17 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<Vec<FileData>, PyLineE
     Ok(files)
 }
 
-async fn analyze_files(files: Vec<FileData>) -> Result<(), PyLineError> {
+async fn analyze_files(cli_result: &ArgsResult, files: Vec<FileData>) -> Result<(), PyLineError> {
     print!("\nGathering code stats... ");
 
-    let python_stats = Python::new().parse(files).await?;
+    match cli_result.lang {
+        CodeLang::Python => {
+            let python_stats = Python::new().parse(files).await?;
 
-    print!("OK.");
-    println!("\n{}\n", python_stats.stats);
+            print!("OK.");
+            println!("\n{}\n", python_stats.stats);
+        }
+    }
 
     Ok(())
 }

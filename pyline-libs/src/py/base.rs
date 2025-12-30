@@ -1,4 +1,3 @@
-use crate::parser::Python;
 use phf::phf_map;
 
 pub const TECH_DIRS: &[&str] = &[
