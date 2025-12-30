@@ -1,7 +1,16 @@
 [package]
 name = "pyline-libs"
 version = "0.1.0"
+keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
 edition = "2024"
+license = "MIT"
+description = """
+PyLine - Codebase Analyzer
+
+A Rust-powered tool for analyzing code's projects with precision filtering capabilities.
+Scan directories, collect files based on multiple criteria, and extract detailed code
+statistics with configurable exclusions and async performance.
+"""
 
 [dependencies]
 async-recursion = "1.1.1"

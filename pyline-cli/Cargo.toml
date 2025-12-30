@@ -1,7 +1,24 @@
 [package]
-name = "pyline-cli"
+name = "pyline"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
+description = """
+PyLine is a powerful command-line tool for analyzing codebases with intelligent filtering
+and detailed statistics collection. It recursively scans directories, gathers codes files based
+on customizable criteria, and provides comprehensive insights into your code structure.
+
+Key features:
+- 📁 Recursive directory scanning with configurable exclusions
+- 🔍 Smart file filtering by extension, directory, and filename patterns
+- 📊 Detailed code statistics collection and analysis
+- 🚀 Async-powered performance for large codebases
+- ⚙️ Flexible CLI configuration with multiple filtering options
+
+Perfect for code reviews, project analysis, and maintaining code quality standards across
+projects of any scale.
+"""
 
 [dependencies]
 pyline-libs = {path = "../pyline-libs"}

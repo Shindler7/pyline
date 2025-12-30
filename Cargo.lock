@@ -360,7 +360,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "pyline-cli"
+name = "pyline"
 version = "0.1.0"
 dependencies = [
  "clap",

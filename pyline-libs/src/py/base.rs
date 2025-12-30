@@ -1,3 +1,4 @@
+use crate::parser::Python;
 use phf::phf_map;
 
 pub const TECH_DIRS: &[&str] = &[
@@ -56,10 +57,10 @@ pub enum PyKeywords {
     Yield,
 }
 
-static KEYWORDS: phf::Map<&'static str, PyKeywords> = phf_map! {
-    "False" => PyKeywords::False,
-    "None" => PyKeywords::None,
-    "True" => PyKeywords::True,
+pub(crate) static KEYWORDS: phf::Map<&'static str, PyKeywords> = phf_map! {
+    "false" => PyKeywords::False,
+    "none" => PyKeywords::None,
+    "true" => PyKeywords::True,
     "and" => PyKeywords::And,
     "as" => PyKeywords::As,
     "assert" => PyKeywords::Assert,
@@ -93,5 +94,3 @@ static KEYWORDS: phf::Map<&'static str, PyKeywords> = phf_map! {
     "with" => PyKeywords::With,
     "yield" => PyKeywords::Yield,
 };
-
-pub struct Python {}

@@ -1,27 +1,21 @@
 //! Module for selecting code files for subsequent analysis.
 
+use crate::errors::PyLineError;
 use crate::utils::format_file_size;
 use async_recursion::async_recursion;
-use std::error::Error;
 use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
 #[derive(Debug, Default)]
 pub struct FileData {
-    path: PathBuf,
+    pub path: PathBuf,
     bytes: u64,
-    lines: u64,
-    codelines: u64,
 }
 
 impl FileData {
     pub fn new(path: PathBuf, bytes: u64) -> Self {
-        Self {
-            path,
-            bytes,
-            ..Default::default()
-        }
+        Self { path, bytes }
     }
 }
 
@@ -31,7 +25,7 @@ impl Display for FileData {
             f,
             "FileAnalysis ({} ({}))",
             self.path.display(),
-            format_file_size(self.bytes).unwrap_or("н/д".to_string())
+            format_file_size(self.bytes).unwrap_or("n/a".to_string())
         )
     }
 }
@@ -57,22 +51,53 @@ impl Collector {
     /// # For example:
     ///
     /// ```
-    /// let c = Collector::new(path)
-    ///             .extensions(&["py"])
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// let c = Collector::new(&path)
+    ///             .extensions(["py"])
     ///             .ignore_dot_dirs(false)
-    ///             .exclude_dirs(&["target", "node_modules"]);
+    ///             .exclude_dirs(["target", "node_modules"]);
     /// ```
     ///
     /// By default, the `ignore_dot_dirs` is enabled (set to true),
     /// meaning all directories starting with a dot (`.`) are ignored.
-    pub fn new(path: PathBuf) -> Self {
+    pub fn new(path: &Path) -> Self {
         Self {
-            path,
+            path: path.to_path_buf(),
             ignore_dot_dirs: true,
             ..Default::default()
         }
     }
 
+    /// Excludes specified directories from file collection.
+    ///
+    /// Directories starting with '.' (dot-directories) cannot be excluded
+    /// through this method. Use `ignore_dot_dirs(true)` instead to handle them.
+    ///
+    /// # Arguments
+    ///
+    /// * `dirs` — An iterator of directory names or patterns to exclude
+    ///
+    /// # Panics
+    ///
+    /// Panics if any directory name starts with '.', as dot-directories
+    /// require special handling via the `ignore_dot_dirs` method.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// Collector::new(&path)
+    ///     .exclude_dirs(["node_modules", "target", "__pycache__"])
+    ///     .complete();
+    /// ```
     pub fn exclude_dirs<I, S>(mut self, dirs: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -92,6 +117,27 @@ impl Collector {
         self
     }
 
+    /// Excludes specified files from collection by their names.
+    ///
+    /// This filter applies to exact filename matches. For pattern-based
+    /// exclusion, consider implementing additional filtering logic.
+    ///
+    /// # Arguments
+    ///
+    /// * `files` — An iterator of filenames to exclude from collection
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// Collector::new(&path)
+    ///     .exclude_files(["README.md", "LICENSE", ".gitignore"])
+    ///     .complete();
+    /// ```
     pub fn exclude_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -101,15 +147,64 @@ impl Collector {
         self
     }
 
+    /// Filters files by their extensions.
+    ///
+    /// Extensions should be provided without the leading dot (e.g., `"py"`, not `".py"`).
+    /// The method automatically normalizes the input by removing any leading dots.
+    ///
+    /// # Arguments
+    ///
+    /// * `ext` — An iterator of file extensions to include
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// Collector::new(&path)
+    ///     .extensions(["py", "rs", "toml"])  // Works with or without dots
+    ///     .complete();
+    /// ```
     pub fn extensions<I, S>(mut self, ext: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.extensions = Some(ext.into_iter().map(|s| s.into()).collect());
+        self.extensions = Some(
+            ext.into_iter()
+                .map(|s| {
+                    let ext = s.into();
+                    ext.trim_start_matches('.').to_string()
+                })
+                .collect(),
+        );
         self
     }
 
+    /// Controls whether directories starting with '.' should be ignored.
+    ///
+    /// Dot-directories (like `.git`, `.venv`, `.idea`) are typically hidden
+    /// and often contain configuration or cache files rather than source code.
+    ///
+    /// # Arguments
+    ///
+    /// * `ignore` — If `true`, all directories starting with '.' are skipped
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// Collector::new(&path)
+    ///     .ignore_dot_dirs(true)  // Skip .git, .venv, etc.
+    ///     .complete();
+    /// ```
     pub fn ignore_dot_dirs(mut self, ignore: bool) -> Self {
         self.ignore_dot_dirs = ignore;
         self
@@ -136,7 +231,7 @@ impl Collector {
     ///
     /// - `Ok(Collector)` with the `files` vector populated with
     ///   [`FileData`] entries.
-    /// - `Err(Box<dyn Error>)` if the operation fails.
+    /// - [`PyLineError`] if the operation fails.
     ///
     /// # Async Behavior
     ///
@@ -150,16 +245,21 @@ impl Collector {
     /// # Example: Basic Usage
     ///
     /// ```no_run
-    /// use std::error::Error;
+    /// use std::path::PathBuf;
+    /// use pyline_libs::collector::Collector;
+    /// use pyline_libs::errors::PyLineError;
     ///
-    /// # async fn example() -> Result<(), Box<dyn Error>> {
-    /// let collector = Collector::new("./src".into())
-    ///     .extensions(&["rs", "toml"])
-    ///     .exclude_dirs(&["target", ".git"])
+    /// # async fn example() -> Result<(), PyLineError> {
+    ///
+    /// let path = PathBuf::from("/path");
+    ///
+    /// let collector = Collector::new(&path)
+    ///     .extensions(["rs", "toml"])
+    ///     .exclude_dirs(["target", ".git"])
     ///     .complete()
     ///     .await?;
     ///
-    /// println!("Found {} Rust files", collector.files.len());
+    /// println!("Found {} Rust files", collector.len());
     /// # Ok(())
     /// # }
     /// ```
@@ -171,13 +271,13 @@ impl Collector {
     /// - File collection is recursive unless filtered by `exclude_dirs`
     /// - Symbolic links are followed according to platform behavior
     /// - The method has internal parallelism optimizations for large scans
-    pub async fn complete(&self) -> Result<Vec<FileData>, Box<dyn Error>> {
+    pub async fn complete(&self) -> Result<Vec<FileData>, PyLineError> {
         // Parsing...
-        Ok(self.mapping_files(&self.path).await?)
+        self.mapping_files(&self.path).await
     }
 
     #[async_recursion]
-    async fn mapping_files(&self, path: &PathBuf) -> Result<Vec<FileData>, Box<dyn Error>> {
+    async fn mapping_files(&self, path: &PathBuf) -> Result<Vec<FileData>, PyLineError> {
         let mut files: Vec<FileData> = Vec::new();
 
         let mut cur_dir = fs::read_dir(path).await?;
@@ -223,12 +323,12 @@ impl Collector {
         #[cfg(target_os = "linux")]
         self.exclude_dirs
             .as_ref()
-            .map_or(false, |dirs| dirs.iter().any(|dir| dir.eq(dir_name)));
+            .is_some_and(|dirs| dirs.iter().any(|dir| dir.eq(dir_name)));
 
         #[cfg(target_os = "windows")]
-        self.exclude_dirs.as_ref().map_or(false, |dirs| {
-            dirs.iter().any(|dir| dir.eq_ignore_ascii_case(dir_name))
-        })
+        self.exclude_dirs
+            .as_ref()
+            .is_some_and(|dirs| dirs.iter().any(|dir| dir.eq_ignore_ascii_case(dir_name)))
     }
 
     fn is_valid_file(&self, file: &Path) -> bool {
@@ -237,7 +337,7 @@ impl Collector {
 
     #[cfg(target_os = "windows")]
     fn is_file_excluded(&self, file: &Path) -> bool {
-        self.exclude_files.as_ref().map_or(false, |exclude_files| {
+        self.exclude_files.as_ref().is_some_and(|exclude_files| {
             file.file_name()
                 .and_then(|name| name.to_str())
                 .map(|name| {
@@ -251,7 +351,7 @@ impl Collector {
 
     #[cfg(target_os = "linux")]
     fn is_file_excluded(&self, file: &Path) -> bool {
-        self.exclude_files.as_ref().map_or(false, |exclude_files| {
+        self.exclude_files.as_ref().is_some_and(|exclude_files| {
             file.file_name()
                 .and_then(|name| name.to_str())
                 .map(|name| exclude_files.iter().any(|excluded| excluded.eq(name)))
@@ -260,7 +360,7 @@ impl Collector {
     }
 
     fn is_valid_extension(&self, file: &Path) -> bool {
-        self.extensions.as_ref().map_or(false, |extensions| {
+        self.extensions.as_ref().is_some_and(|extensions| {
             file.extension()
                 .and_then(|ext| ext.to_str())
                 .map(|ext| extensions.iter().any(|vec_e| vec_e.eq(ext)))
