@@ -20,7 +20,7 @@ const TRIPLE_SINGLE: &str = "'''";
 const TRIPLE_DOUBLE: &str = r#"""""#;
 
 #[derive(Copy, Clone)]
-enum QuoteType {
+pub(crate) enum QuoteType {
     TripleSingle,
     TripleDouble,
 }
@@ -53,9 +53,25 @@ impl<T: AsRef<str>> PythonLineAnalysis for T {
             return false;
         }
 
-        let begin = line.get(..3).unwrap();
+        let quotes = match line.starts_with_quotes() {
+            Some(s) => s,
+            None => return false,
+        };
 
-        true
+        match line.rfind(quotes.as_str()) {
+            Some(_) => true,
+            None => false,
+        }
+    }
+
+    fn starts_with_quotes(&self) -> Option<QuoteType> {
+        if self.as_ref().starts_with(TRIPLE_SINGLE) {
+            Some(QuoteType::TripleSingle)
+        } else if self.as_ref().starts_with(TRIPLE_DOUBLE) {
+            Some(QuoteType::TripleDouble)
+        } else {
+            None
+        }
     }
 
     fn is_comment(&self) -> bool {

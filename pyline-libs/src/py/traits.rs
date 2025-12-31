@@ -3,6 +3,8 @@
 //! zero-cost abstractions for checking line properties without requiring
 //! full-scale parsing.
 
+use crate::py::py_methods::QuoteType;
+
 /// A trait providing utility methods for analyzing Python source code lines.
 ///
 /// This trait offers methods to determine properties of Python code lines
@@ -72,6 +74,9 @@ pub trait PythonLineAnalysis {
     /// before calling this method, or implementing a separate method that accounts
     /// for Python's string prefix syntax.
     fn is_triple_quotes_line(&self) -> bool;
+
+    /// Checks if the string starts with a triple-quote delimiter.
+    fn starts_with_quotes(&self) -> Option<QuoteType>;
 
     /// Check if a line contains only a Python comment.
     fn is_comment(&self) -> bool;
