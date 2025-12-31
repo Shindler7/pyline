@@ -80,7 +80,7 @@ async fn analyze_files(cli_result: &ArgsResult, files: Vec<FileData>) -> Result<
             let python_stats = Python::new().parse(files).await?;
 
             print!("OK.");
-            println!("\n{}\n", python_stats.stats);
+            println!("\n{}\n", python_stats);
         }
     }
 

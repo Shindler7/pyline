@@ -56,6 +56,49 @@ pub enum PyKeywords {
     Yield,
 }
 
+impl std::fmt::Display for PyKeywords {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::False => "False",
+            Self::None => "None",
+            Self::True => "True",
+            Self::And => "and",
+            Self::As => "as",
+            Self::Assert => "assert",
+            Self::Async => "async",
+            Self::Await => "await",
+            Self::Break => "break",
+            Self::Class => "class",
+            Self::Continue => "continue",
+            Self::Def => "def",
+            Self::Del => "del",
+            Self::Elif => "elif",
+            Self::Else => "else",
+            Self::Except => "except",
+            Self::Finally => "finally",
+            Self::For => "for",
+            Self::From => "from",
+            Self::Global => "global",
+            Self::If => "if",
+            Self::Import => "import",
+            Self::In => "in",
+            Self::Is => "is",
+            Self::Lambda => "lambda",
+            Self::Nonlocal => "nonlocal",
+            Self::Not => "not",
+            Self::Or => "or",
+            Self::Pass => "pass",
+            Self::Raise => "raise",
+            Self::Return => "return",
+            Self::Try => "try",
+            Self::While => "while",
+            Self::With => "with",
+            Self::Yield => "yield",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 pub(crate) static KEYWORDS: phf::Map<&'static str, PyKeywords> = phf_map! {
     "false" => PyKeywords::False,
     "none" => PyKeywords::None,

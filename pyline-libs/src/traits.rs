@@ -12,8 +12,15 @@ pub trait CodeParsers {
     /// Creates an object for parsing a single file.
     fn new_one() -> Self;
 
-    /// Idiomatic method for merging statistics from Python code files.
-    fn update_with(&mut self, result: &Self::Code) {}
+    /// Merges another instance into this one, summing all fields.
+    fn merge(&mut self, other: Self::Code);
+
+    /// Alternative version that borrows the other instance.
+    fn merge_ref(&mut self, other: &Self::Code);
+
+    /// Consumes both instances and returns a new merged instance
+    /// (functional style).
+    fn combined(self, other: Self::Code) -> Self;
 
     /// Parses the provided list of files in asynchronous mode.
     ///

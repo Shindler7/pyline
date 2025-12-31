@@ -17,6 +17,32 @@ pub struct CodeFilesStat {
     pub code_lines: usize,
 }
 
+impl CodeFilesStat {
+    /// Merges another CodeFilesStat instance into this one, summing all fields.
+    pub fn merge(&mut self, other: CodeFilesStat) {
+        self.num_files_total += other.num_files_total;
+        self.num_files_not_valid += other.num_files_not_valid;
+        self.lines_total += other.lines_total;
+        self.code_lines += other.code_lines;
+    }
+
+    /// Alternative version that borrows the other instance.
+    pub fn merge_ref(&mut self, other: &CodeFilesStat) {
+        self.num_files_total += other.num_files_total;
+        self.num_files_not_valid += other.num_files_not_valid;
+        self.lines_total += other.lines_total;
+        self.code_lines += other.code_lines;
+    }
+
+    /// Consumes both instances and returns a new merged instance
+    /// (functional style).
+    pub fn combined(self, other: CodeFilesStat) -> Self {
+        let mut result = self;
+        result.merge(other);
+        result
+    }
+}
+
 impl Display for CodeFilesStat {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "Files: {}", self.num_files_total)?;
@@ -36,4 +62,22 @@ pub struct Python {
     pub stats: CodeFilesStat,
     /// Statistics of identified Python keywords.
     pub keywords: HashMap<String, usize>,
+}
+
+impl Display for Python {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.stats)?;
+
+        if !self.keywords.is_empty() {
+            write!(f, "\n\nKeywords:")?;
+
+            let mut sorted_keywords: Vec<_> = self.keywords.iter().collect();
+            sorted_keywords.sort_by(|a, b| b.1.cmp(a.1));
+            for (keyword, count) in sorted_keywords {
+                write!(f, "\n  {} = {}", keyword, count)?;
+            }
+        }
+
+        Ok(())
+    }
 }
