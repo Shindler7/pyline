@@ -427,12 +427,10 @@ impl Collector {
 
     #[cfg(target_os = "linux")]
     fn is_file_excluded(&self, file: &Path) -> bool {
-        self.exclude_files.as_ref().is_some_and(|exclude_files| {
-            file.file_name()
-                .and_then(|name| name.to_str())
-                .map(|name| exclude_files.iter().any(|excluded| excluded.eq(name)))
-                .unwrap_or(false)
-        })
+        file.file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| self.exclude_files.iter().any(|excluded| excluded.eq(name)))
+            .unwrap_or(false)
     }
 
     fn is_valid_extension(&self, file: &Path) -> bool {

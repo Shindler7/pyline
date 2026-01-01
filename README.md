@@ -23,7 +23,7 @@ Rust, Python
 
 ### Prerequisites
 
-- Rust Toolchain (Rust and Cargo, version 1.75 or higher)
+- Rust Toolchain (Rust and Cargo, version 1.83 or higher)
 - [Installation instructions](https://rust-lang.org/tools/install/)
 
 ### Building from Source
@@ -147,9 +147,14 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project uses independent versioning for each crate in the workspace:
 
 * **`pyline-cli`** — `0.3.0`
-* **`pyline-libs`** — `0.3.1`
+* **`pyline-libs`** — `0.3.2`
 
 ### Changelog
+
+#### libs-0.3.2
+
+- A minor bug introduced during the refactoring for Linux compatibility
+  has been fixed.
 
 #### libs-0.3.1
 
