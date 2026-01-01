@@ -147,9 +147,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 This project uses independent versioning for each crate in the workspace:
 
 * **`pyline-cli`** — `0.3.0`
-* **`pyline-libs`** — `0.3.0`
+* **`pyline-libs`** — `0.3.1`
 
 ### Changelog
+
+#### libs-0.3.1
+
+- For Python parsing, clarified handling of intermediate symbols (such
+  as commas, parentheses) that are ignored and reset the accumulated
+  keyword buffer
 
 #### 0.3.0
 

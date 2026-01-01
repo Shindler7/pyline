@@ -404,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "pyline-libs"
-version = "0.3.0"
+version = "0.3.1"
 dependencies = [
  "async-recursion",
  "futures",

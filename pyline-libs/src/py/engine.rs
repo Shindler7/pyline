@@ -87,7 +87,9 @@ impl Python {
                     buf_keyword.clear();
                 }
 
-                (false, ' ' | '\u{00A0}' | '\t') => buf_keyword.clear(),
+                (false, ' ' | '\u{00A0}' | '\t' | '=' | '(' | ')' | ':' | '.' | '{' | '}') => {
+                    buf_keyword.clear()
+                }
 
                 (false, _) => {
                     buf_keyword.push(ch);
