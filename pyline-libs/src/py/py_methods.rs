@@ -12,14 +12,7 @@
 //! - **Zero-cost abstractions**: Works directly on string slices when possible
 //! - **Extensible**: Designed to be extended with additional analysis methods
 
-use crate::py::traits::PythonLineAnalysis;
 use std::iter::Peekable;
-
-impl<T: AsRef<str>> PythonLineAnalysis for T {
-    fn is_empty_line(&self) -> bool {
-        self.as_ref().is_empty()
-    }
-}
 
 /// Checks if a quote character at a given position in a peekable iterator is part
 /// of a triple-quote sequence.

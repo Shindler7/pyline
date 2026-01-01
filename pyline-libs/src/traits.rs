@@ -4,23 +4,21 @@ use crate::collector::FileData;
 use crate::errors::PyLineError;
 
 pub trait CodeParsers {
-    type Code;
+    type Code: Default;
 
     /// Constructs a new empty instance of the type.
-    fn new() -> Self;
+    fn new() -> Self::Code {
+        Default::default()
+    }
 
     /// Creates an object for parsing a single file.
-    fn new_one() -> Self;
+    fn new_one() -> Self::Code;
 
     /// Merges another instance into this one, summing all fields.
     fn merge(&mut self, other: Self::Code);
 
     /// Alternative version that borrows the other instance.
     fn merge_ref(&mut self, other: &Self::Code);
-
-    /// Consumes both instances and returns a new merged instance
-    /// (functional style).
-    fn combined(self, other: Self::Code) -> Self;
 
     /// Parses the provided list of files in asynchronous mode.
     ///
@@ -72,7 +70,7 @@ pub trait CodeParsers {
 pub trait FileDataExt {
     /// Joins file data items into a single string with detailed information.
     ///
-    /// Each file is represented using its [`verbose_display`] method,
+    /// Each file is represented using its `verbose_display` method,
     /// and items are separated by the specified delimiter.
     fn join_verbose(&self, sep: &str) -> String;
 }

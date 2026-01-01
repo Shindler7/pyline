@@ -12,12 +12,6 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 impl CodeParsers for Python {
     type Code = Python;
 
-    fn new() -> Python {
-        Self {
-            ..Default::default()
-        }
-    }
-
     fn new_one() -> Python {
         let mut code_stat = Self::new();
         code_stat.count_file();
@@ -40,14 +34,6 @@ impl CodeParsers for Python {
         for (keyword, count) in &other.keywords {
             *self.keywords.entry(keyword.clone()).or_insert(0) += count;
         }
-    }
-
-    /// Consumes both instances and returns a new merged instance
-    /// (functional style).
-    fn combined(self, other: Python) -> Python {
-        let mut result = self;
-        result.merge(other);
-        result
     }
 
     async fn parse(&mut self, files: Vec<FileData>) -> Result<Python, PyLineError> {

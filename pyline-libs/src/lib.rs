@@ -11,5 +11,5 @@ pub mod collector;
 pub mod errors;
 pub mod parser;
 pub mod py;
-pub mod utils;
 pub mod traits;
+pub mod utils;

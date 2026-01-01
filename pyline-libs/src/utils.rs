@@ -1,6 +1,7 @@
 //! Supporting utility library.
 
 use crate::errors::PyLineError;
+use std::time::SystemTime;
 
 /// Converts a number of bytes into human-readable size units.
 ///
@@ -49,4 +50,15 @@ pub fn format_file_size(bytes: u64) -> Result<String, PyLineError> {
         };
         Ok(result)
     }
+}
+
+/// Provides the number of seconds since the UNIX epoch, based on system time.
+///
+/// Panics if an error occurs while obtaining the system time.
+#[allow(dead_code)]
+pub fn get_timestamp() -> u64 {
+    SystemTime::now()
+        .duration_since(SystemTime::UNIX_EPOCH)
+        .unwrap()
+        .as_secs()
 }

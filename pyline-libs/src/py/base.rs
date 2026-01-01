@@ -1,19 +1,21 @@
 use phf::phf_map;
 
-pub const TECH_DIRS: &[&str] = &[
-    "venv",
-    ".venv",
-    "env",
-    ".env",
-    "__pycache__",
-    ".git",
-    "mypy_cache",
+pub const EXCLUDE_DIRS: &[&str] = &["venv", "env", "__pycache__", "mypy_cache"];
+
+pub const EXCLUDE_DOT_DIRS: &[&str] = &[
     ".pytest_cache",
+    ".venv",
+    ".env",
+    ".git",
     ".idea",
     ".vscode",
     ".eggs",
     ".cache",
 ];
+
+pub const EXCLUDE_FILENAMES: &[&str] = &[];
+
+pub const MARKER_FILE: &[&str] = &["pyvenv.cfg"];
 
 pub const VALID_EXTENSIONS: &[&str] = &["py"];
 

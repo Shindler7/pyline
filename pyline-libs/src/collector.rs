@@ -50,12 +50,37 @@ impl FileDataExt for Vec<FileData> {
     }
 }
 
+/// Configuration for collecting and filtering files from a directory structure.
+///
+/// Used to define rules for which files and directories should be included
+/// or excluded during file collection operations. All fields have sensible
+/// defaults.
 #[derive(Default)]
 pub struct Collector {
+    /// Root directory path from which to start file collection.
     path: PathBuf,
-    exclude_dirs: Option<Vec<String>>,
-    exclude_files: Option<Vec<String>>,
-    extensions: Option<Vec<String>>,
+
+    /// List of file names that, when found, cause their parent directories
+    /// to be excluded.
+    ///
+    /// For example, including `.gitignore` here would skip directories
+    /// containing a `.gitignore` file.
+    marker_files: Vec<String>,
+
+    /// List of directory names to exclude from traversal.
+    exclude_dirs: Vec<String>,
+
+    /// List of file names to exclude from collection.
+    exclude_files: Vec<String>,
+
+    /// List of file extensions to include in collection.
+    ///
+    /// Only files with these extensions will be collected. For example,
+    /// `vec!["py", "pyw"]` would collect only Python files. `None` means
+    /// all file extensions are included.
+    extensions: Vec<String>,
+
+    /// Whether to ignore directories starting with a dot (`.`).    
     ignore_dot_dirs: bool,
 }
 
@@ -68,7 +93,7 @@ impl Collector {
     /// You can refine the search using the following extension methods:
     /// `exclude_dirs`, `exclude_files`, `extensions`.
     ///
-    /// # For example:
+    /// ## For example:
     ///
     /// ```
     /// use std::path::PathBuf;
@@ -97,16 +122,16 @@ impl Collector {
     /// Directories starting with '.' (dot-directories) cannot be excluded
     /// through this method. Use `ignore_dot_dirs(true)` instead to handle them.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `dirs` — An iterator of directory names or patterns to exclude
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// Panics if any directory name starts with '.', as dot-directories
     /// require special handling via the `ignore_dot_dirs` method.
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```
     /// use std::path::PathBuf;
@@ -123,17 +148,32 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.exclude_dirs = Some(
+        self.exclude_dirs =
             dirs.into_iter()
                 .map(|s| {
                     let s_into = s.into();
                     if s_into.starts_with(".") {
-                        panic!("To exclude dot-directories (starting with '.'), set ignore_dot_dirs to true.")
+                        panic!("Cannot exclude dot-directories (e.g., '.git') via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
+        Consider removing them from `exclude_dirs`, or disable `ignore_dot_dirs` with `.ignore_dot_dirs(false)`.");
                     }
                     s_into
                 })
-                .collect(),
-        );
+                .collect();
+        self
+    }
+
+    /// Configures which files should trigger exclusion of their parent directories.
+    ///
+    /// When a file with any of the specified names is found in a directory,
+    /// that entire directory (including subdirectories) will be skipped during
+    /// file collection. This is useful for ignoring directories based on marker
+    /// files like `.gitignore`, `.noscan`, etc.
+    pub fn with_marker_files<I, S>(mut self, files: I) -> Self
+    where
+        I: IntoIterator<Item = S>,
+        S: Into<String>,
+    {
+        self.marker_files = files.into_iter().map(|s| s.into()).collect();
         self
     }
 
@@ -142,11 +182,11 @@ impl Collector {
     /// This filter applies to exact filename matches. For pattern-based
     /// exclusion, consider implementing additional filtering logic.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `files` — An iterator of filenames to exclude from collection
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// use std::path::PathBuf;
@@ -163,7 +203,7 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.exclude_files = Some(files.into_iter().map(|s| s.into()).collect());
+        self.exclude_files = files.into_iter().map(|s| s.into()).collect();
         self
     }
 
@@ -172,11 +212,11 @@ impl Collector {
     /// Extensions should be provided without the leading dot (e.g., `"py"`, not `".py"`).
     /// The method automatically normalizes the input by removing any leading dots.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `ext` — An iterator of file extensions to include
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// use std::path::PathBuf;
@@ -193,14 +233,13 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.extensions = Some(
-            ext.into_iter()
-                .map(|s| {
-                    let ext = s.into();
-                    ext.trim_start_matches('.').to_string()
-                })
-                .collect(),
-        );
+        self.extensions = ext
+            .into_iter()
+            .map(|s| {
+                let ext = s.into();
+                ext.trim_start_matches('.').to_string()
+            })
+            .collect();
         self
     }
 
@@ -209,11 +248,11 @@ impl Collector {
     /// Dot-directories (like `.git`, `.venv`, `.idea`) are typically hidden
     /// and often contain configuration or cache files rather than source code.
     ///
-    /// # Arguments
+    /// ## Arguments
     ///
     /// * `ignore` — If `true`, all directories starting with '.' are skipped
     ///
-    /// # Example
+    /// ## Example
     ///
     /// ```no_run
     /// use std::path::PathBuf;
@@ -239,7 +278,7 @@ impl Collector {
     /// the directory tree starting from the configured `path`, applying
     /// all specified filters and exclusions to collect matching files.
     ///
-    /// # Order of Operations
+    /// ## Order of Operations
     ///
     /// 1. All builder methods (`exclude_dirs`, `exclude_files`, `extensions`,
     ///    etc.) must be called **before** `complete()`.
@@ -247,22 +286,22 @@ impl Collector {
     ///    populated `Collector`.
     /// 3. The collected files are available in the `files` field.
     ///
-    /// # Returns
+    /// ## Returns
     ///
     /// - `Ok(Collector)` with the `files` vector populated with
     ///   [`FileData`] entries.
     /// - [`PyLineError`] if the operation fails.
     ///
-    /// # Async Behavior
+    /// ## Async Behavior
     ///
     /// The method uses async I/O operations.
     ///
-    /// # Panics
+    /// ## Panics
     ///
     /// This method does not panic under normal circumstances. All expected
     /// error conditions are captured in the `Result` type.
     ///
-    /// # Example: Basic Usage
+    /// ## Example: Basic Usage
     ///
     /// ```no_run
     /// use std::path::PathBuf;
@@ -284,7 +323,7 @@ impl Collector {
     /// # }
     /// ```
     ///
-    /// # Notes
+    /// ## Notes
     ///
     /// - The operation respects all filters configured via builder methods
     /// - By default, dot-directories (starting with `.`) are excluded
@@ -341,14 +380,33 @@ impl Collector {
         }
 
         #[cfg(target_os = "linux")]
-        self.exclude_dirs
-            .as_ref()
-            .is_some_and(|dirs| dirs.iter().any(|dir| dir.eq(dir_name)));
+        let dirs_exclude = self
+            .exclude_dirs
+            .iter()
+            .any(|dir| dir.eq_ignore_ascii_case(dir_name));
 
         #[cfg(target_os = "windows")]
-        self.exclude_dirs
-            .as_ref()
-            .is_some_and(|dirs| dirs.iter().any(|dir| dir.eq_ignore_ascii_case(dir_name)))
+        let dirs_exclude = self
+            .exclude_dirs
+            .iter()
+            .any(|dir| dir.eq_ignore_ascii_case(dir_name));
+
+        // Exclude by marker files.
+        dirs_exclude || self.should_exclude_dir_by_marker_file(path)
+    }
+
+    /// Checks whether a directory should be excluded based on the presence of marker files.
+    ///
+    /// This method determines if a directory should be skipped during file collection
+    /// by checking whether it contains any of the files specified in `marker_files`.
+    /// If a marker file is found, the entire directory (including its subdirectories)
+    /// is excluded from further traversal.
+    fn should_exclude_dir_by_marker_file(&self, dir_path: &Path) -> bool {
+        !self.marker_files.is_empty()
+            && self.marker_files.iter().any(|file_name| {
+                let marker_path = dir_path.join(file_name);
+                marker_path.exists() && marker_path.is_file()
+            })
     }
 
     fn is_valid_file(&self, file: &Path) -> bool {
@@ -357,16 +415,14 @@ impl Collector {
 
     #[cfg(target_os = "windows")]
     fn is_file_excluded(&self, file: &Path) -> bool {
-        self.exclude_files.as_ref().is_some_and(|exclude_files| {
-            file.file_name()
-                .and_then(|name| name.to_str())
-                .map(|name| {
-                    exclude_files
-                        .iter()
-                        .any(|excluded| excluded.eq_ignore_ascii_case(name))
-                })
-                .unwrap_or(false)
-        })
+        file.file_name()
+            .and_then(|name| name.to_str())
+            .map(|name| {
+                self.exclude_files
+                    .iter()
+                    .any(|excluded| excluded.eq_ignore_ascii_case(name))
+            })
+            .unwrap_or(false)
     }
 
     #[cfg(target_os = "linux")]
@@ -380,11 +436,37 @@ impl Collector {
     }
 
     fn is_valid_extension(&self, file: &Path) -> bool {
-        self.extensions.as_ref().is_some_and(|extensions| {
-            file.extension()
-                .and_then(|ext| ext.to_str())
-                .map(|ext| extensions.iter().any(|vec_e| vec_e.eq(ext)))
-                .unwrap_or(false)
-        })
+        file.extension()
+            .and_then(|ext| ext.to_str())
+            .map(|ext| self.extensions.iter().any(|e| e == ext))
+            .unwrap_or(false)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::path::PathBuf;
+
+    #[test]
+    fn file_data_display_format() {
+        let file = FileData::new(PathBuf::from("main.rs"), 100);
+        let text = format!("{}", file);
+        assert!(text.contains("main.rs"));
+        assert!(text.contains("100"));
+    }
+
+    #[test]
+    fn verbose_display_contains_filename_and_size() {
+        let file = FileData::new(PathBuf::from("test.py"), 1024);
+        let v = file.verbose_display();
+        assert!(v.contains("File:"));
+        assert!(v.contains("1024"));
+    }
+
+    #[test]
+    fn remove_dot_from_extensions() {
+        let c = Collector::new(Path::new("/some/path")).extensions([".py", "rs", ".toml"]);
+        assert_eq!(c.extensions, vec!["py", "rs", "toml"]);
     }
 }

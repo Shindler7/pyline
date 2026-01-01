@@ -56,9 +56,10 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<Vec<FileData>, PyLineE
     print!("\nGathering files for analysis... ");
 
     let files = Collector::new(&cli_result.path)
-        .ignore_dot_dirs(true)
+        .ignore_dot_dirs(cli_result.ignore_dot_dirs)
         .extensions(&cli_result.extension)
         .exclude_dirs(&cli_result.dirs)
+        .with_marker_files(&cli_result.marker_files)
         .exclude_files(&cli_result.filenames)
         .complete()
         .await?;

@@ -52,41 +52,69 @@ cd pyline-cli
 cargo run -- --help
 ```
 
-## Development
+### Example Usage
 
-The project is organized as a Cargo workspace with two main components:
-
-* `pyline-cli/` — Command-line interface application
-* `pyline-libs/` — Core library with analysis functionality
-
-## Building for Development
+The simplest option: scan Python files with automatic configuration.
 
 ```shell
-# Build everything
-cargo build
+$ pyline --lang py --auto-config -p d:\coderep
 
-# Build and run tests
-cargo test
+Selected language: PYTHON, https://www.python.org/
 
-# Run with specific input
-cargo run -- --lang py --path ./my_project
+The files in the directory are being examined: d:\coderep
+
+Gathering files for analysis... OK. Successfully gathered 450 files.
+
+Gathering code stats... OK.
+Files: 450
+Lines: 40396
+  of which are code lines: 38768
+
+Keywords:
+  def = 2014
+  ...
 ```
 
-## Usage Examples
+Let's make it more complex. For example, we don't want to scan directories
+where a main.py file is found. Then we do this:
 
 ```shell
-# Analyze current directory
-pyline --lang py
+$ pyline --lang py --auto-config -p d:\coderep -m main.py
 
-# Analyze specific directory
-pyline --lang py --path /path/to/project
+Selected language: PYTHON, https://www.python.org/
 
-# Exclude test directories
-pyline --lang py --dirs tests --dirs __pycache__
+The files in the directory are being examined: d:\coderep
 
-# Add file to collection by extensions
-pyline --extension txt
+Gathering files for analysis... OK. Successfully gathered 450 files.
+
+Gathering code stats... OK.
+Files: 450
+Lines: 40396
+  of which are code lines: 38768
+
+Keywords:
+  def = 2014
+  ...
 ```
+
+**Note**: In the second example, the number of files may be lower if
+directories
+containing main.py are excluded from scanning.
+
+### Key Features
+
+- **Language-aware analysis** with predefined language profiles (`--lang`)
+- **Automatic configuration** based on language conventions (`--auto-config`)
+- **Smart directory traversal** with multiple exclusion mechanisms:
+    - Exclude specific directories (`--exclude-dirs`)
+    - Skip directories containing marker files (`--marker-files`)
+    - Automatic dot-directory filtering (`--ignore-dot-dirs`)
+- **Flexible file filtering** by extensions (`--ext`) and filenames (
+  `--exclude-files`)
+- **Detailed statistics** including line counts, code lines, and keyword
+  frequencies
+- **Verbose mode** for debugging and detailed progress information (
+  `--verbose`)
 
 ## Roadmap
 
@@ -99,11 +127,36 @@ pyline --extension txt
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
+## Versioning
+
+This project uses independent versioning for each crate in the workspace:
+
+* **`pyline-cli`** — `0.2.0`
+* **`pyline-libs`** — `0.2.0`
+
+### Changelog
+
+#### 0.2.0
+
+**pyline-cli**
+
+- Added CLI flags: `--ignore-dot-dirs`, `--auto-config`, `--marker-files`
+- Renamed several existing flags for clarity
+- Added directory exclusion when marker files are detected
+- Added automatic file collection configuration via `--auto-config`
+- Added comprehensive test suite
+- Internal refactoring and improvements
+
+**pyline-libs**
+
+- Updated to support new CLI features
+- Minor internal adjustments
+
 ## License
 
 This project is licensed under the MIT License.
 
-# Acknowledgments
+## Acknowledgments
 
 Built with the amazing Rust programming language.
 
