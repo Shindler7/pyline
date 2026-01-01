@@ -15,6 +15,10 @@ The project consists of a console binary `pyline-cli` and a library crate
 - 📈 Keyword frequency analysis across multiple programming languages
 - 🎯 Support for multiple file formats and programming languages
 
+### Supported Languages
+
+Rust, Python
+
 ## Quick Start
 
 ### Prerequisites
@@ -75,6 +79,17 @@ Keywords:
   ...
 ```
 
+**Note**: In the example above, the -p key was used with a folder reference.
+If you need to analyze the current folder, you can omit the key:
+
+```shell
+# short
+$ pyline -l rust -a
+
+# long
+$ pyline --lang rust --auto-config
+```
+
 Let's make it more complex. For example, we don't want to scan directories
 where a main.py file is found. Then we do this:
 
@@ -131,10 +146,16 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project uses independent versioning for each crate in the workspace:
 
-* **`pyline-cli`** — `0.2.0`
-* **`pyline-libs`** — `0.2.0`
+* **`pyline-cli`** — `0.3.0`
+* **`pyline-libs`** — `0.3.0`
 
 ### Changelog
+
+#### 0.3.0
+
+- Added support for parsing Rust files
+- Unified parsing methods, including macro creation, for easier expansion
+  of supported languages
 
 #### 0.2.0
 

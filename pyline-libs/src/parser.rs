@@ -1,6 +1,6 @@
 //! Core infrastructure for parsing and analyzing code files.
 
-use std::collections::HashMap;
+use crate::{define_lang_struct, display_for_lang};
 use std::fmt::{Display, Formatter};
 
 /// Data structure with statistics of analyzed files.
@@ -55,29 +55,5 @@ impl Display for CodeFilesStat {
     }
 }
 
-/// Structure for parsing Python files.
-#[derive(Debug, Default, Clone)]
-pub struct Python {
-    /// Data structure with statistics of analyzed files.
-    pub stats: CodeFilesStat,
-    /// Statistics of identified Python keywords.
-    pub keywords: HashMap<String, usize>,
-}
-
-impl Display for Python {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.stats)?;
-
-        if !self.keywords.is_empty() {
-            write!(f, "\n\nKeywords:")?;
-
-            let mut sorted_keywords: Vec<_> = self.keywords.iter().collect();
-            sorted_keywords.sort_by(|a, b| b.1.cmp(a.1));
-            for (keyword, count) in sorted_keywords {
-                write!(f, "\n  {} = {}", keyword, count)?;
-            }
-        }
-
-        Ok(())
-    }
-}
+define_lang_struct!(Python);
+define_lang_struct!(Rust);

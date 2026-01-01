@@ -10,6 +10,10 @@ use clap::{Parser, ValueEnum};
 use pyline_libs::py::base::{
     EXCLUDE_DIRS, EXCLUDE_DOT_DIRS, EXCLUDE_FILENAMES, MARKER_FILE, VALID_EXTENSIONS,
 };
+use pyline_libs::rust::base::{
+    RUST_EXCLUDE_DIRS, RUST_EXCLUDE_DOT_DIRS, RUST_EXCLUDE_FILENAMES, RUST_MARKER_FILE,
+    RUST_VALID_EXTENSIONS,
+};
 use std::env;
 use std::fmt::Display;
 use std::path::PathBuf;
@@ -92,12 +96,15 @@ pub enum CodeLang {
     #[clap(name = "python", alias = "py")]
     #[default]
     Python,
+    #[clap(name = "rust")]
+    Rust,
 }
 
 impl Display for CodeLang {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CodeLang::Python => f.write_str("PYTHON, https://www.python.org/"),
+            CodeLang::Python => f.write_str("Python, https://www.python.org/"),
+            CodeLang::Rust => f.write_str("Rust, https://rust-lang.org/"),
         }
     }
 }
@@ -163,6 +170,7 @@ impl ArgsResult {
     fn exclude_dirs_by_lang(&self) -> Vec<String> {
         let (dirs, dot_dirs) = match self.lang {
             CodeLang::Python => (EXCLUDE_DIRS, EXCLUDE_DOT_DIRS),
+            CodeLang::Rust => (RUST_EXCLUDE_DIRS, RUST_EXCLUDE_DOT_DIRS),
         };
 
         let combined_defaults: Vec<&str> = if self.ignore_dot_dirs {
@@ -181,6 +189,7 @@ impl ArgsResult {
     fn exclude_marker_files_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
             CodeLang::Python => MARKER_FILE,
+            CodeLang::Rust => RUST_MARKER_FILE,
         };
 
         Self::normalize_list(default, &self.marker_files, false)
@@ -193,6 +202,7 @@ impl ArgsResult {
     fn exclude_filenames_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
             CodeLang::Python => EXCLUDE_FILENAMES,
+            CodeLang::Rust => RUST_EXCLUDE_FILENAMES,
         };
 
         Self::normalize_list(default, &self.filenames, false)
@@ -205,6 +215,7 @@ impl ArgsResult {
     fn normalize_ext_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
             CodeLang::Python => VALID_EXTENSIONS,
+            CodeLang::Rust => RUST_VALID_EXTENSIONS,
         };
 
         Self::normalize_list(default, &self.extension, true)

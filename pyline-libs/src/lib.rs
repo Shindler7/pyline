@@ -9,7 +9,10 @@
 
 pub mod collector;
 pub mod errors;
+#[macro_use]
 pub mod parser;
 pub mod py;
 pub mod traits;
 pub mod utils;
+pub mod macros;
+pub mod rust;

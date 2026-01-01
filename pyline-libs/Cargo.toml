@@ -1,6 +1,6 @@
 [package]
 name = "pyline-libs"
-version = "0.2.0"
+version = "0.3.0"
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
 edition = "2024"
 license = "MIT"

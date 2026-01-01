@@ -32,7 +32,7 @@ pub trait CodeParsers {
     fn parse(
         &mut self,
         files: Vec<FileData>,
-    ) -> impl Future<Output = Result<Self::Code, PyLineError>> + Send;
+    ) -> impl Future<Output = Result<(), PyLineError>> + Send;
 
     /// Increment the files_count value by 1.
     fn count_file(&mut self);

@@ -11,7 +11,7 @@ mod config;
 use crate::cli::{ArgsResult, CodeLang};
 use pyline_libs::collector::{Collector, FileData};
 use pyline_libs::errors::PyLineError;
-use pyline_libs::parser::Python;
+use pyline_libs::parser::{Python, Rust};
 use std::process::exit;
 
 #[tokio::main]
@@ -78,10 +78,18 @@ async fn analyze_files(cli_result: &ArgsResult, files: Vec<FileData>) -> Result<
 
     match cli_result.lang {
         CodeLang::Python => {
-            let python_stats = Python::new().parse(files).await?;
+            let mut python_stats = Python::new();
+            python_stats.parse(files).await?;
 
             print!("OK.");
             println!("\n{}\n", python_stats);
+        }
+        CodeLang::Rust => {
+            let mut rust_stats = Rust::new();
+            rust_stats.parse(files).await?;
+
+            print!("OK.");
+            println!("\n{}\n", rust_stats);
         }
     }
 
