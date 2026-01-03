@@ -7,12 +7,16 @@
 use pyline_libs::traits::{CodeParsers, FileDataExt};
 mod cli;
 mod config;
+mod tools;
 
 use crate::cli::{ArgsResult, CodeLang};
-use pyline_libs::collector::{Collector, FileData};
+use crate::tools::show_dot;
+use pyline_libs::collector::{Collector, CollectorResult, FileData};
 use pyline_libs::errors::PyLineError;
 use pyline_libs::parser::{Python, Rust};
 use std::process::exit;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 #[tokio::main]
 async fn main() {
@@ -37,22 +41,41 @@ async fn run() -> Result<(), PyLineError> {
 
     let files = collect_files(&cli_result).await?;
 
-    if files.is_empty() {
+    // About errors and verbose.
+    if files.has_errors() {
+        println!(
+            "\nWARNINGS! During the gathering process, {} errors occurred.",
+            files.num_errors()
+        );
+        if cli_result.verbose {
+            for err in files.errors() {
+                eprintln!("\n{}", err);
+            }
+        }
+    }
+
+    if !files.has_files() {
         return Ok(());
     }
 
-    println!(" Successfully gathered {} files.", files.len());
+    println!(" Successfully gathered {} files.", files.num_files());
 
     if cli_result.verbose {
-        println!("\n{}", files.join_verbose(""));
+        println!("\n{}", files.files().join_verbose(""));
     }
 
-    analyze_files(&cli_result, files).await?;
+    analyze_files(&cli_result, files.files()).await?;
 
     Ok(())
 }
 
-async fn collect_files(cli_result: &ArgsResult) -> Result<Vec<FileData>, PyLineError> {
+async fn collect_files(cli_result: &ArgsResult) -> Result<CollectorResult, PyLineError> {
+    let running = Arc::new(AtomicBool::new(true));
+    let spinner_handle = {
+        let running = running.clone();
+        tokio::spawn(show_dot(running))
+    };
+
     print!("\nGathering files for analysis... ");
 
     let files = Collector::new(&cli_result.path)
@@ -61,19 +84,26 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<Vec<FileData>, PyLineE
         .exclude_dirs(&cli_result.dirs)
         .with_marker_files(&cli_result.marker_files)
         .exclude_files(&cli_result.filenames)
+        .skip_errors(cli_result.skip_gather_errors)
         .complete()
         .await?;
 
-    if files.is_empty() {
-        print!("NO FILES.");
-    } else {
+    // Spinner stop.
+    running.store(false, Ordering::Relaxed);
+    let _ = spinner_handle.await;
+
+    if files.has_files() {
         print!("OK.");
+    } else {
+        print!("NO FILES.");
     }
+
+    println!();
 
     Ok(files)
 }
 
-async fn analyze_files(cli_result: &ArgsResult, files: Vec<FileData>) -> Result<(), PyLineError> {
+async fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
     print!("\nGathering code stats... ");
 
     match cli_result.lang {

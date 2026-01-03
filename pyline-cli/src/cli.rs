@@ -85,6 +85,10 @@ struct Args {
     #[clap(short = 'X', long, value_name = "FILENAMES")]
     exclude_files: Vec<String>,
 
+    /// Sets whether to skip access/read errors and continue processing only accessible items.
+    #[clap(short, long, default_value = "true")]
+    skip_gather_errors: bool,
+
     /// Enable verbose output with detailed logging information.
     #[clap(short, long)]
     verbose: bool,
@@ -120,6 +124,7 @@ pub struct ArgsResult {
     pub verbose: bool,
     pub ignore_dot_dirs: bool,
     auto_config: bool,
+    pub skip_gather_errors: bool,
 }
 
 impl ArgsResult {
@@ -276,6 +281,7 @@ impl ArgsResult {
              ├─ Extensions: {}\n\
              ├─ Exclude Filenames: {}\n\
              ├─ Language: {:?}\n\
+             ├─ Skip gather errors: {}\n\
              └─ Verbose: {}",
             self.path.display(),
             dirs,
@@ -284,6 +290,7 @@ impl ArgsResult {
             self.extension.join(", "),
             filenames,
             self.lang,
+            self.skip_gather_errors,
             self.verbose
         )
     }
@@ -318,6 +325,7 @@ pub fn read_cmd_args() -> ArgsResult {
         extension: args.ext,
         filenames: args.exclude_files,
         lang: args.lang,
+        skip_gather_errors: args.skip_gather_errors,
         verbose: args.verbose,
     }
 }

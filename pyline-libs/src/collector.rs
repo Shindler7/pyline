@@ -28,6 +28,11 @@ impl FileData {
             format_file_size(self.bytes).unwrap_or("n/a".to_string())
         )
     }
+
+    /// Returns the file size in bytes.
+    pub fn size(&self) -> u64 {
+        self.bytes
+    }
 }
 
 impl Display for FileData {
@@ -82,6 +87,13 @@ pub struct Collector {
 
     /// Whether to ignore directories starting with a dot (`.`).    
     ignore_dot_dirs: bool,
+
+    /// If `true`, access and read errors will be ignored, and the collection will be built only
+    /// from accessible directories/files. Otherwise, the search will
+    /// halt upon encountering any error.
+    ///
+    /// Default: `true`.
+    skip_errors: bool,
 }
 
 impl Collector {
@@ -113,6 +125,7 @@ impl Collector {
         Self {
             path: path.to_path_buf(),
             ignore_dot_dirs: true,
+            skip_errors: true,
             ..Default::default()
         }
     }
@@ -268,6 +281,79 @@ impl Collector {
         self.ignore_dot_dirs = ignore;
         self
     }
+
+    /// Sets whether to skip access/read errors and continue processing only accessible items.
+    ///
+    /// When `true` (default), errors are ignored and collection proceeds with accessible
+    /// directories/files. When `false`, any error immediately halts the search.
+    pub fn skip_errors(mut self, skip: bool) -> Self {
+        self.skip_errors = skip;
+        self
+    }
+}
+
+#[derive(Default)]
+pub struct CollectorResult {
+    result: Vec<FileData>,
+    errors: Vec<PyLineError>,
+}
+
+impl CollectorResult {
+    /// Create instance with empty fields.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Returns a reference to the collected files.
+    pub fn files(&self) -> &Vec<FileData> {
+        &self.result
+    }
+
+    /// Returns `true` if any files were collected.
+    pub fn has_files(&self) -> bool {
+        !self.result.is_empty()
+    }
+
+    /// Returns the number of collected files.
+    pub fn num_files(&self) -> usize {
+        self.result.len()
+    }
+
+    /// Returns a reference to the error list.
+    pub fn errors(&self) -> &Vec<PyLineError> {
+        &self.errors
+    }
+
+    /// Returns `true` if any errors occurred during collection.
+    pub fn has_errors(&self) -> bool {
+        !self.errors.is_empty()
+    }
+
+    /// Returns the number of errors encountered.
+    pub fn num_errors(&self) -> usize {
+        self.errors.len()
+    }
+
+    pub fn add_file(&mut self, item: FileData) {
+        self.result.push(item);
+    }
+
+    pub fn add_err(&mut self, err: PyLineError) {
+        self.errors.push(err);
+    }
+
+    pub fn extend_results(&mut self, items: Vec<FileData>) {
+        self.result.extend(items);
+    }
+
+    pub fn extend_errors(&mut self, errs: Vec<PyLineError>) {
+        self.errors.extend(errs);
+    }
+
+    pub fn absorb(&mut self, other: Self) {
+        self.result.extend(other.result);
+        self.errors.extend(other.errors);
+    }
 }
 
 impl Collector {
@@ -287,10 +373,9 @@ impl Collector {
     /// 3. The collected files are available in the `files` field.
     ///
     /// ## Returns
-    ///
-    /// - `Ok(Collector)` with the `files` vector populated with
-    ///   [`FileData`] entries.
-    /// - [`PyLineError`] if the operation fails.
+    /// - `Ok(CollectorResult)` with collected files and errors (if
+    ///   `skip_errors` is enabled)
+    /// - `Err(PyLineError)` if `skip_errors` is `false` and an error occurs
     ///
     /// ## Async Behavior
     ///
@@ -318,7 +403,7 @@ impl Collector {
     ///     .complete()
     ///     .await?;
     ///
-    /// println!("Found {} Rust files", collector.len());
+    /// println!("Found {} Rust files", collector.num_files());
     /// # Ok(())
     /// # }
     /// ```
@@ -330,39 +415,67 @@ impl Collector {
     /// - File collection is recursive unless filtered by `exclude_dirs`
     /// - Symbolic links are followed according to platform behavior
     /// - The method has internal parallelism optimizations for large scans
-    pub async fn complete(&self) -> Result<Vec<FileData>, PyLineError> {
+    pub async fn complete(&self) -> Result<CollectorResult, PyLineError> {
         // Parsing...
         self.mapping_files(&self.path).await
     }
 
+    /// Recursively collects files matching the configured criteria.
+    ///
+    /// Traverses directories depth-first, applying all configured filters and exclusions.
+    /// Returns a [`CollectorResult`] containing both successfully collected files
+    /// and any encountered errors (depending on the `skip_errors` setting).
     #[async_recursion]
-    async fn mapping_files(&self, path: &PathBuf) -> Result<Vec<FileData>, PyLineError> {
-        let mut files: Vec<FileData> = Vec::new();
+    async fn mapping_files(&self, path: &Path) -> Result<CollectorResult, PyLineError> {
+        // let mut files: Vec<FileData> = Vec::new();
+        let mut collector_result = CollectorResult::new();
 
-        let mut cur_dir = fs::read_dir(path).await?;
-        while let Some(cur_dir_elems) = cur_dir.next_entry().await? {
-            let elem = cur_dir_elems.path();
+        // Ok or skip_errors?
+        let mut dir_entries = match fs::read_dir(path).await {
+            Ok(entries) => entries,
+            Err(err) => {
+                return if self.skip_errors {
+                    collector_result.add_err(err.into());
+                    Ok(collector_result)
+                } else {
+                    Err(err.into())
+                };
+            }
+        };
+
+        'collect: while let Some(entry_res) = match dir_entries.next_entry().await {
+            Ok(entry) => entry,
+            Err(err) => {
+                if self.skip_errors {
+                    collector_result.add_err(err.into());
+                    continue 'collect;
+                } else {
+                    return Err(err.into());
+                }
+            }
+        } {
+            let elem = entry_res.path();
+            let metadata = entry_res.metadata().await?;
 
             if self.is_valid_dir(&elem) {
                 // Subfolders
-                if let Ok(sub_files) = self.mapping_files(&elem).await {
-                    files.extend(sub_files);
+                match self.mapping_files(&elem).await {
+                    Ok(sub_dirs) => collector_result.absorb(sub_dirs),
+                    Err(err) => {
+                        if self.skip_errors {
+                            collector_result.add_err(err);
+                        } else {
+                            return Err(err);
+                        }
+                    }
                 }
-            }
-            if self.is_valid_file(&elem) {
-                let fb = Self::file_bytes(&elem);
-                files.push(FileData::new(elem, fb));
+            } else if self.is_valid_file(&elem) {
+                let file_data = FileData::new(elem, metadata.len());
+                collector_result.add_file(file_data);
             }
         }
 
-        Ok(files)
-    }
-
-    fn file_bytes(file: &Path) -> u64 {
-        match file.metadata() {
-            Ok(metadata) => metadata.len(),
-            Err(_) => 0,
-        }
+        Ok(collector_result)
     }
 
     fn is_valid_dir(&self, path: &Path) -> bool {
@@ -395,12 +508,10 @@ impl Collector {
         dirs_exclude || self.should_exclude_dir_by_marker_file(path)
     }
 
-    /// Checks whether a directory should be excluded based on the presence of marker files.
+    /// Checks if a directory contains any marker files that warrant exclusion.
     ///
-    /// This method determines if a directory should be skipped during file collection
-    /// by checking whether it contains any of the files specified in `marker_files`.
-    /// If a marker file is found, the entire directory (including its subdirectories)
-    /// is excluded from further traversal.
+    /// Returns `true` if the directory contains any file specified in `marker_files`.
+    /// When a marker file is found, the entire directory tree is skipped.
     fn should_exclude_dir_by_marker_file(&self, dir_path: &Path) -> bool {
         !self.marker_files.is_empty()
             && self.marker_files.iter().any(|file_name| {
@@ -413,24 +524,24 @@ impl Collector {
         file.is_file() && self.is_valid_extension(file) && !self.is_file_excluded(file)
     }
 
-    #[cfg(target_os = "windows")]
     fn is_file_excluded(&self, file: &Path) -> bool {
         file.file_name()
             .and_then(|name| name.to_str())
-            .map(|name| {
-                self.exclude_files
-                    .iter()
-                    .any(|excluded| excluded.eq_ignore_ascii_case(name))
-            })
+            .map(|name| self.is_excluded_contains_this(name))
             .unwrap_or(false)
     }
 
-    #[cfg(target_os = "linux")]
-    fn is_file_excluded(&self, file: &Path) -> bool {
-        file.file_name()
-            .and_then(|name| name.to_str())
-            .map(|name| self.exclude_files.iter().any(|excluded| excluded.eq(name)))
-            .unwrap_or(false)
+    fn is_excluded_contains_this(&self, file_name: &str) -> bool {
+        #[cfg(target_os = "windows")]
+        return self
+            .exclude_files
+            .iter()
+            .any(|excluded| excluded.eq_ignore_ascii_case(file_name));
+
+        #[cfg(not(target_os = "windows"))]
+        self.exclude_files
+            .iter()
+            .any(|excluded| excluded.eq(file_name))
     }
 
     fn is_valid_extension(&self, file: &Path) -> bool {

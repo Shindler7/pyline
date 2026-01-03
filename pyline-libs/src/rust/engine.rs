@@ -2,7 +2,7 @@ use crate::collector::FileData;
 use crate::errors::PyLineError;
 use crate::impl_lang_parser;
 use crate::parser::Rust;
-use crate::rust::base::{RustKeywords, RUST_KEYWORDS};
+use crate::rust::base::{RUST_KEYWORDS, RustKeywords};
 use crate::traits::CodeParsers;
 use std::collections::HashMap;
 use tokio::fs::File;

@@ -29,10 +29,8 @@ pub trait CodeParsers {
     ///
     /// Statistics data if parsing is successful, or [`PyLineError`]
     /// if an error occurs during parsing.
-    fn parse(
-        &mut self,
-        files: Vec<FileData>,
-    ) -> impl Future<Output = Result<(), PyLineError>> + Send;
+    fn parse(&mut self, files: &[FileData])
+    -> impl Future<Output = Result<(), PyLineError>> + Send;
 
     /// Increment the files_count value by 1.
     fn count_file(&mut self);

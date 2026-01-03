@@ -2,7 +2,7 @@ use crate::collector::FileData;
 use crate::errors::PyLineError;
 use crate::impl_lang_parser;
 use crate::parser::Python;
-use crate::py::base::{PyKeywords, KEYWORDS};
+use crate::py::base::{KEYWORDS, PyKeywords};
 use crate::py::py_methods::is_triple_quotes;
 use crate::traits::CodeParsers;
 use std::collections::HashMap;

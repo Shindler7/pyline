@@ -39,8 +39,8 @@ async fn test_basic_collection() -> Result<(), PyLineError> {
         .complete()
         .await?;
 
-    assert_eq!(files.len(), 1);
-    assert!(files[0].path.ends_with("example.py"));
+    assert_eq!(files.num_files(), 1);
+    assert!(files.files()[0].path.ends_with("example.py"));
 
     Ok(())
 }
@@ -56,9 +56,10 @@ async fn test_include_dot_dirs() -> Result<(), PyLineError> {
         .await?;
 
     // now we should see file from .git too
-    assert_eq!(files.len(), 2);
+    assert_eq!(files.num_files(), 2);
 
     let collected_files: Vec<_> = files
+        .files()
         .iter()
         .map(|f| f.path.file_name().unwrap().to_str().unwrap())
         .collect();
@@ -84,7 +85,12 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
         .complete()
         .await?;
 
-    assert!(!files.iter().any(|f| f.path.ends_with("ignoreme.py")));
+    assert!(
+        !files
+            .files()
+            .iter()
+            .any(|f| f.path.ends_with("ignoreme.py"))
+    );
 
     Ok(())
 }

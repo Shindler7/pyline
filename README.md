@@ -61,7 +61,7 @@ cargo run -- --help
 The simplest option: scan Python files with automatic configuration.
 
 ```shell
-$ pyline --lang py --auto-config -p d:\coderep
+$ pyline -l py -a -p d:\coderep
 
 Selected language: PYTHON, https://www.python.org/
 
@@ -146,10 +146,18 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project uses independent versioning for each crate in the workspace:
 
-* **`pyline-cli`** — `0.3.0`
-* **`pyline-libs`** — `0.3.2`
+* **`pyline-cli`** — `0.4.0`
+* **`pyline-libs`** — `0.4.0`
 
 ### Changelog
+
+#### 0.4.0
+
+- Enhanced file collection performance with configurable error handling
+  and verbose mode support
+- New CLI flag `--skip-gather-errors` (`-s`) for flexible error handling
+  during file collection
+- Added real-time progress visualization during file discovery
 
 #### libs-0.3.2
 

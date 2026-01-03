@@ -217,7 +217,7 @@ macro_rules! impl_lang_parser {
 
             async fn parse(
                 &mut self,
-                files: Vec<FileData>,
+                files: &[FileData],
             ) -> Result<(), $crate::errors::PyLineError> {
                 if files.is_empty() {
                     return Err($crate::errors::PyLineError::NoFilesForParse);
