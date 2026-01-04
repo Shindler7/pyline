@@ -1,6 +1,6 @@
 [package]
 name = "pyline"
-version = "0.4.0"
+version = "0.4.1"
 edition = "2024"
 license = "MIT"
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
@@ -22,8 +22,8 @@ projects of any scale.
 
 [dependencies]
 pyline-libs = { path = "../pyline-libs" }
-clap = { version = "4.5.53", features = ["derive"] }
-tokio = { version = "1.48.0", features = ["full"] }
+clap = { version = "4", features = ["derive"] }
+tokio = { version = "1", features = ["full"] }
 
 [[bin]]
 name = "pyline"

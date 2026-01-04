@@ -13,10 +13,10 @@ statistics with configurable exclusions and async performance.
 """
 
 [dependencies]
-async-recursion = "1.1.1"
-tokio = { version = "1.48.0", features = ["full"] }
+async-recursion = "1"
+tokio = { version = "1", features = ["full"] }
 futures = "0.3.31"
 phf = { version = "0.13.1", features = ["macros"] }
 
 [dev-dependencies]
-uuid = { version = "1.19.0", features = ["v4"] }
+uuid = { version = "1", features = ["v4"] }

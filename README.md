@@ -146,10 +146,18 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project uses independent versioning for each crate in the workspace:
 
-* **`pyline-cli`** — `0.4.0`
-* **`pyline-libs`** — `0.4.0`
+* **`pyline-cli`** — `0.4.1`
+* **`pyline-libs`** — `0.4.1`
 
 ### Changelog
+
+#### 0.4.1
+
+- Fixed a logical issue with the `--skip-gather-errors` (`-s`) flag.  
+  It has been replaced with `-E` / `--gather-errors`.  
+  **Default behavior**: errors are silently skipped.  
+  **With flag**: access/read errors are collected and reported.
+- The old `--skip-gather-errors` flag has been removed.
 
 #### 0.4.0
 

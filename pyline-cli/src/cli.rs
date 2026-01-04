@@ -85,9 +85,9 @@ struct Args {
     #[clap(short = 'X', long, value_name = "FILENAMES")]
     exclude_files: Vec<String>,
 
-    /// Sets whether to skip access/read errors and continue processing only accessible items.
-    #[clap(short, long, default_value = "true")]
-    skip_gather_errors: bool,
+    /// Do not skip access/read errors (default: errors are skipped)
+    #[clap(short = 'E', long = "gather-errors", default_value = "false")]
+    no_skip_gather_errors: bool,
 
     /// Enable verbose output with detailed logging information.
     #[clap(short, long)]
@@ -325,7 +325,7 @@ pub fn read_cmd_args() -> ArgsResult {
         extension: args.ext,
         filenames: args.exclude_files,
         lang: args.lang,
-        skip_gather_errors: args.skip_gather_errors,
+        skip_gather_errors: !args.no_skip_gather_errors,
         verbose: args.verbose,
     }
 }
