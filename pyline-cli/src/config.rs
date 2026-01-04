@@ -1,1 +1,1 @@
-//! Настройки приложения.
+//! Application settings.

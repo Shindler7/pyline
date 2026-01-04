@@ -11,10 +11,19 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 impl_lang_parser!(Python);
 
+/// Result of parsing a Python source line.
 enum PythonResult {
+    /// Successfully parsed code containing Python keywords.
     Code(HashMap<PyKeywords, usize>),
+
+    /// Line contains no relevant code (comments, blank lines, etc.).
     NoCode,
+
+    /// Entered a triple-quoted string literal (`'''` or `"""`).
+    /// The `char` indicates the quote character used (`'` or `"`).
     InTripleQuotes(char),
+
+    /// Exited a triple-quoted string literal.
     EndTripleQuotes,
 }
 

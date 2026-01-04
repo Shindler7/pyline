@@ -8,18 +8,34 @@ use std::fmt::{Debug, Display, Formatter};
 use std::path::{Path, PathBuf};
 use tokio::fs;
 
+/// Metadata for a source code file to be processed.
+///
+/// Contains the file path and size information. Used throughout the parsing
+/// pipeline to track files and provide detailed feedback in verbose mode.
 #[derive(Debug, Default)]
 pub struct FileData {
+    /// Full path to the source file.
     pub path: PathBuf,
+
+    /// File size in bytes.
     bytes: u64,
 }
 
 impl FileData {
+    /// Creates a new `FileData` instance with the given path and size.
     pub fn new(path: PathBuf, bytes: u64) -> Self {
         Self { path, bytes }
     }
 
     /// Returns a detailed string representation suitable for verbose output.
+    /// Includes both the raw byte count and a human-readable size format.
+    ///
+    /// Example output:
+    ///
+    /// ```bash
+    ///  File: src/main.py
+    ///  size: 2048 bytes (2.0 KB)
+    /// ```
     pub fn verbose_display(&self) -> String {
         format!(
             "File: {}\n  size: {} bytes ({})\n",
@@ -292,9 +308,17 @@ impl Collector {
     }
 }
 
+/// Result of a file collection operation with error tracking.
+///
+/// Contains both successfully collected files and any errors encountered
+/// during the collection process. This allows for partial success scenarios
+/// where some files are processed successfully while others fail.
 #[derive(Default)]
 pub struct CollectorResult {
+    /// Successfully collected files.
     result: Vec<FileData>,
+
+    /// Errors encountered during file collection.
     errors: Vec<PyLineError>,
 }
 
@@ -334,22 +358,29 @@ impl CollectorResult {
         self.errors.len()
     }
 
+    /// Adds a successfully collected file to the result.
     pub fn add_file(&mut self, item: FileData) {
         self.result.push(item);
     }
 
+    /// Adds an error encountered during collection.
     pub fn add_err(&mut self, err: PyLineError) {
         self.errors.push(err);
     }
 
+    /// Extends the collection with multiple successfully collected files.
     pub fn extend_results(&mut self, items: Vec<FileData>) {
         self.result.extend(items);
     }
 
+    /// Extends the collection with multiple errors.
     pub fn extend_errors(&mut self, errs: Vec<PyLineError>) {
         self.errors.extend(errs);
     }
 
+    /// Merges another `CollectorResult` into this one, consuming it.
+    ///
+    /// All files and errors from `other` are added to this result.
     pub fn absorb(&mut self, other: Self) {
         self.result.extend(other.result);
         self.errors.extend(other.errors);

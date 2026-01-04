@@ -1,3 +1,25 @@
+//! Declarative macros for implementing language parsers with consistent
+//! formatting.
+//!
+//! Provides a set of macros that reduce boilerplate when creating
+//! language-specific parsing implementations. The macros enforce
+//! a standardized structure for:
+//! - Code statistics collection and display
+//! - Parser trait implementation
+//! - Result formatting and keyword tracking
+//!
+//! These macros follow the "inversion of control" pattern, generating
+//! framework code while requiring manual implementation of language-specific
+//! parsing logic.
+//!
+//! # Core Components
+//! - [`display_for_lang!`] - Implements `Display` with standardized output
+//!   format
+//! - [`define_lang_struct!`] - Defines a language analysis structure
+//!   with statistics
+//! - [`impl_lang_parser!`] - Implements the `CodeParsers` trait with async
+//!   file processing
+
 /// Implements `Display` trait for code statistics structures.
 ///
 /// Generates a standardized output format showing:

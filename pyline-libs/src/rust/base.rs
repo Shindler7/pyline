@@ -1,9 +1,14 @@
+//! Default settings for parsing a Rust codebase.
+//!
+//! Include information for correctly building the required files, excluding,
+//! for example, environment directories. Plus a set of keywords that the
+//! parser will use to parse code lines.
 use phf::phf_map;
 
-// Directories to exclude when parsing
+/// Directories to exclude when parsing.
 pub const RUST_EXCLUDE_DIRS: &[&str] = &["target", "build", "dist", "__pycache__"];
 
-// Dot directories (starting with a dot) to exclude
+/// Dot directories (starting with a dot) to exclude.
 pub const RUST_EXCLUDE_DOT_DIRS: &[&str] = &[
     ".git",
     ".idea",
@@ -16,17 +21,18 @@ pub const RUST_EXCLUDE_DOT_DIRS: &[&str] = &[
     ".env",
 ];
 
-// Filenames to exclude
+/// Filenames to exclude.
 pub const RUST_EXCLUDE_FILENAMES: &[&str] = &["Cargo.lock", ".gitignore", ".gitmodules"];
 
-// Marker files that indicate project root or environment
+/// Special marker files whose presence identifies certain directory types.
 pub const RUST_MARKER_FILE: &[&str] = &["rust-toolchain", "rustfmt.toml"];
 
-// Valid file extensions for analysis
+/// Valid file extensions for analysis.
 pub const RUST_VALID_EXTENSIONS: &[&str] = &["rs"];
 
-/// Rust language keywords
+/// Rust language keywords.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[allow(missing_docs)]
 pub enum RustKeywords {
     // Primitive types
     Bool,
@@ -194,7 +200,7 @@ impl std::fmt::Display for RustKeywords {
     }
 }
 
-/// Rust keywords map for fast lookups
+/// Rust keywords map for fast lookups.
 pub(crate) static RUST_KEYWORDS: phf::Map<&'static str, RustKeywords> = phf_map! {
     // Primitive types
     "bool" => RustKeywords::Bool,

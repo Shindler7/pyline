@@ -395,7 +395,7 @@ dependencies = [
 
 [[package]]
 name = "pyline"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "clap",
  "pyline-libs",
@@ -404,7 +404,7 @@ dependencies = [
 
 [[package]]
 name = "pyline-libs"
-version = "0.4.1"
+version = "0.4.2"
 dependencies = [
  "async-recursion",
  "futures",

@@ -88,11 +88,11 @@ impl Rust {
                             '*' => {
                                 // Start block comment
                                 chars.next(); // skip '*'
-                                if code_map.is_empty() {
-                                    return RustResult::InBlockComment;
+                                return if code_map.is_empty() {
+                                    RustResult::InBlockComment
                                 } else {
-                                    return RustResult::Code(code_map);
-                                }
+                                    RustResult::Code(code_map)
+                                };
                             }
                             _ => {
                                 buf_keyword.push(ch);
@@ -108,7 +108,7 @@ impl Rust {
                 }
 
                 '"' | '\'' | 'r' => {
-                    // Строковые литералы, пропускаем до конца
+                    // String literals, skip it.
                     Self::consume_string_literal(ch, &mut chars);
                     buf_keyword.clear();
                 }

@@ -3,7 +3,32 @@
 use crate::collector::FileData;
 use crate::errors::PyLineError;
 
+/// Core trait for language-specific code parsers.
+///
+/// Defines the interface that all language parsers must implement. This trait provides
+/// the framework for file processing, statistics collection, and result aggregation.
+/// Language-specific implementations are typically generated using the [`impl_lang_parser!`]
+/// macro, which handles common boilerplate while requiring manual implementation of
+/// language-specific parsing logic.
+///
+/// # Type Parameters
+/// - `Code` — The concrete parser type that implements this trait (usually `Self`).
+///
+/// # Architecture
+/// The trait follows a two-phase processing model:
+/// 1. **File-level processing**: `parse()` method handles multiple files asynchronously
+/// 2. **Line-level processing**: Language-specific logic in `parse_code_lines()` (not part of
+///    trait)
+///
+/// # Usage Pattern
+/// 1. Implement or generate a struct with `stats: CodeFilesStat` and `keywords: HashMap`
+/// 2. Use `impl_lang_parser!` macro to generate common implementation
+/// 3. Manually implement language-specific line parsing methods
+///
+/// # Examples
+/// See [`Python`] and [`Rust`] in the `parser` module for complete implementations.
 pub trait CodeParsers {
+    /// The concrete parser type (typically `Self`).
     type Code: Default;
 
     /// Constructs a new empty instance of the type.
@@ -12,12 +37,20 @@ pub trait CodeParsers {
     }
 
     /// Creates an object for parsing a single file.
+    ///
+    /// This differs from `new()` in that it performs initial setup like
+    /// counting the first file. Used internally by the parsing infrastructure.
     fn new_one() -> Self::Code;
 
-    /// Merges another instance into this one, summing all fields.
+    /// Merges another parser instance into this one, consuming it.
+    ///
+    /// Combines statistics and keyword counts from both instances.
+    /// This is used to aggregate results from multiple files.
     fn merge(&mut self, other: Self::Code);
 
-    /// Alternative version that borrows the other instance.
+    /// Borrowing version of `merge()`.
+    ///
+    /// Useful when you need to preserve the original instance.
     fn merge_ref(&mut self, other: &Self::Code);
 
     /// Parses the provided list of files in asynchronous mode.

@@ -146,10 +146,15 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project uses independent versioning for each crate in the workspace:
 
-* **`pyline-cli`** — `0.4.1`
-* **`pyline-libs`** — `0.4.1`
+* **`pyline-cli`** — `0.4.2`
+* **`pyline-libs`** — `0.4.2`
 
 ### Changelog
+
+#### 0.4.2 (04.01.2026)
+
+- Updated code documentation without changes to the functionality of the 
+  console application and library
 
 #### 0.4.1
 

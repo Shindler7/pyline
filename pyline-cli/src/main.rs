@@ -4,6 +4,8 @@
 //! Produces statistical analysis of Python keyword usage.
 //!
 //! Shindler7, 2025.
+#![warn(missing_docs)]
+
 use pyline_libs::traits::{CodeParsers, FileDataExt};
 mod cli;
 mod config;

@@ -4,17 +4,35 @@ use std::error::Error;
 use std::fmt::{Display, Formatter};
 use std::io::Error as IoError;
 
+/// Error types for the PyLine code analysis tool.
+///
+/// Categorizes different failure scenarios that can occur during
+/// file scanning, parsing, and analysis operations.
 #[derive(Debug)]
 pub enum PyLineError {
     /// I/O error that occurred during file operations (reading,
     /// writing, etc.).
-    IOError { error: IoError, description: String },
+    IOError {
+        /// The underlying I/O error from the standard library.
+        error: IoError,
+        /// Human-readable context about what operation failed.
+        description: String,
+    },
 
     /// Error building the file tree for parsing.
-    ScannerError { description: String },
+    ScannerError {
+        /// Description of what went wrong during file scanning.
+        description: String,
+    },
 
     /// Error parsing code files.
-    CounterError { description: String },
+    ///
+    /// Indicates problems during the code analysis phase, such as syntax issues
+    /// or unsupported language features.
+    CounterError {
+        /// Description of the parsing failure.
+        description: String,
+    },
 
     /// No files available for code parsing.
     NoFilesForParse,
