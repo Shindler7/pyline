@@ -17,7 +17,8 @@ The project consists of a console binary `pyline-cli` and a library crate
 
 ### Supported Languages
 
-Rust, Python
+* Rust
+* Python
 
 ## Quick Start
 
@@ -146,14 +147,22 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 This project uses independent versioning for each crate in the workspace:
 
-* **`pyline-cli`** — `0.4.2`
+* **`pyline-cli`** — `0.4.3`
 * **`pyline-libs`** — `0.4.2`
 
 ### Changelog
 
+#### cli-0.4.4 (03.03.2026)
+
+- Minor fix
+
+#### cli-0.4.3 (06.01.2026)
+
+- Fixed display of information in the console
+
 #### 0.4.2 (04.01.2026)
 
-- Updated code documentation without changes to the functionality of the 
+- Updated code documentation without changes to the functionality of the
   console application and library
 
 #### 0.4.1

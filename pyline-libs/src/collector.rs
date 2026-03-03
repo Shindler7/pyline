@@ -1,11 +1,11 @@
 //! Module for selecting code files for subsequent analysis.
 
-use crate::errors::PyLineError;
-use crate::traits::FileDataExt;
-use crate::utils::format_file_size;
+use crate::{errors::PyLineError, traits::FileDataExt, utils::format_file_size};
 use async_recursion::async_recursion;
-use std::fmt::{Debug, Display, Formatter};
-use std::path::{Path, PathBuf};
+use std::{
+    fmt::{Debug, Display, Formatter},
+    path::{Path, PathBuf},
+};
 use tokio::fs;
 
 /// Metadata for a source code file to be processed.

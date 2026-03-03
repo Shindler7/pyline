@@ -11,34 +11,46 @@ mod cli;
 mod config;
 mod tools;
 
-use crate::cli::{ArgsResult, CodeLang};
-use crate::tools::show_dot;
-use pyline_libs::collector::{Collector, CollectorResult, FileData};
-use pyline_libs::errors::PyLineError;
-use pyline_libs::parser::{Python, Rust};
-use std::process::exit;
-use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
+use crate::{
+    cli::{ArgsResult, CodeLang},
+    tools::show_dot,
+};
+use anyhow::Result as AnyhowResult;
+use pyline_libs::{
+    collector::{Collector, CollectorResult, FileData},
+    errors::PyLineError,
+    parser::{Python, Rust},
+};
+use std::{
+    process::exit,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
+};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> AnyhowResult<()> {
     if let Err(e) = run().await {
         eprintln!("Error: {}", e);
         exit(1);
     }
+
+    Ok(())
 }
 
+/// Main loop function.
 async fn run() -> Result<(), PyLineError> {
     let cli_result = cli::read_cmd_args().normalize_by_lang();
 
+    println!("\nSelected language: {}\n", cli_result.lang);
+    println!(
+        "The files in the directory are being examined: {}",
+        cli_result.path.display()
+    );
+
     if cli_result.verbose {
-        println!("{}", cli_result.verbose_display());
-    } else {
-        println!("\nSelected language: {}\n", cli_result.lang);
-        println!(
-            "The files in the directory are being examined: {}",
-            cli_result.path.display()
-        );
+        println!("\n{}", cli_result.verbose_display());
     }
 
     let files = collect_files(&cli_result).await?;
