@@ -6,9 +6,10 @@
 //! - Providing sensible defaults when arguments are omitted
 //! - Converting raw arguments into structured configuration for the application
 
+use anyhow::{Context, Result as AnyhowResult, bail};
 use clap::{Parser, ValueEnum};
-use pyline_libs::{py::base as py_base, rust::base as rust_base};
-use std::{env, fmt::Display, path::PathBuf, process::exit};
+use pyline_libs::{CodeLanguage, collector::Collector};
+use std::{env, path::PathBuf};
 
 #[derive(Parser, Debug)]
 #[clap(about = "A high-performance CLI tool for analyzing codebases with \
@@ -96,176 +97,79 @@ pub enum CodeLang {
     Rust,
 }
 
-impl Display for CodeLang {
+impl std::fmt::Display for CodeLang {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            CodeLang::Python => f.write_str("Python, https://www.python.org/"),
-            CodeLang::Rust => f.write_str("Rust, https://rust-lang.org/"),
+            CodeLang::Python => write!(f, "{}", CodeLanguage::Python),
+            CodeLang::Rust => write!(f, "{}", CodeLanguage::Rust),
         }
     }
 }
 
-#[derive(Default, Clone)]
-pub struct ArgsResult {
-    pub path: PathBuf,
-    pub dirs: Vec<String>,
-    pub marker_files: Vec<String>,
-    pub extension: Vec<String>,
-    pub filenames: Vec<String>,
-    pub lang: CodeLang,
-    pub verbose: bool,
-    pub ignore_dot_dirs: bool,
-    auto_config: bool,
-    pub skip_gather_errors: bool,
+impl From<CodeLang> for CodeLanguage {
+    fn from(lang: CodeLang) -> Self {
+        match lang {
+            CodeLang::Rust => CodeLanguage::Rust,
+            CodeLang::Python => CodeLanguage::Python,
+        }
+    }
+}
+
+#[derive(Default)]
+pub(super) struct ArgsResult {
+    pub(super) collector: Collector,
+    pub(super) verbose: bool,
 }
 
 impl ArgsResult {
-    /// Creates a normalized copy of the arguments with language-aware extensions.
+    /// Reading command-line parameters with validation.
     ///
-    /// This method returns a new instance where file extensions are processed to ensure:
-    /// - All extensions have leading dots
-    /// - Language-specific default extensions are included
-    /// - Duplicate extensions are removed
-    ///
-    /// The original instance remains unchanged (following Rust's immutability principles).
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// let args = ArgsResult {
-    ///     lang: CodeLang::Python,
-    ///     ext: vec!["py".to_string(), ".txt".to_string()],
-    ///     // other fields...
-    /// };
-    ///
-    /// let normalized = args.normalize_by_lang();
-    /// // normalized.ext will contain: [".py", ".txt"]
-    /// // (".py" added by default for Python, ".txt" from user input)
-    /// ```
-    pub fn normalize_by_lang(&self) -> Self {
-        let mut normalize_self = self.clone();
-        normalize_self.extension = self.normalize_ext_by_lang();
+    /// Control is not returned until valid data is received from the user.
+    pub(super) fn from_clap() -> AnyhowResult<Self> {
+        let args = Args::parse();
+        let path = parse_path(args.path)?;
 
-        if !self.auto_config {
-            return normalize_self;
-        }
+        let collector = Collector::new(&path, args.lang.into(), args.auto_config)
+            .with_ignore_dot_dirs(args.ignore_dot_dirs)
+            .with_extensions(args.ext)
+            .with_exclude_dirs(args.exclude_dirs)?
+            .with_marker_files(args.marker_files)
+            .with_exclude_files(args.exclude_files)
+            .with_skip_errors(!args.no_skip_gather_errors);
 
-        // auto-config execution.
-        normalize_self.dirs = self.exclude_dirs_by_lang();
-        normalize_self.marker_files = self.exclude_marker_files_by_lang();
-        normalize_self.filenames = self.exclude_filenames_by_lang();
-
-        normalize_self
-    }
-
-    /// Normalizes the list of directories excluded by default for the current
-    /// language.
-    ///
-    /// Merges language-specific default exclusions with user-provided
-    /// directories, respecting the `ignore_dot_dirs` flag for handling hidden
-    /// directories.
-    fn exclude_dirs_by_lang(&self) -> Vec<String> {
-        let (dirs, dot_dirs) = match self.lang {
-            CodeLang::Python => (py_base::EXCLUDE_DIRS, py_base::EXCLUDE_DOT_DIRS),
-            CodeLang::Rust => (
-                rust_base::RUST_EXCLUDE_DIRS,
-                rust_base::RUST_EXCLUDE_DOT_DIRS,
-            ),
-        };
-
-        let combined_defaults: Vec<&str> = if self.ignore_dot_dirs {
-            dirs.to_vec()
-        } else {
-            dirs.iter().chain(dot_dirs.iter()).copied().collect()
-        };
-
-        Self::normalize_list(&combined_defaults, &self.dirs, false)
-    }
-
-    /// Builds the list of marker files specific to the current language.
-    ///
-    /// Combines language-specific default markers with user-provided entries,
-    /// ensuring uniqueness of items in the resulting list.
-    fn exclude_marker_files_by_lang(&self) -> Vec<String> {
-        let default = match self.lang {
-            CodeLang::Python => py_base::MARKER_FILE,
-            CodeLang::Rust => rust_base::RUST_MARKER_FILE,
-        };
-
-        Self::normalize_list(default, &self.marker_files, false)
-    }
-
-    /// Generates the list of filenames to exclude based on language.
-    ///
-    /// Merges language-specific default exclusions with the user-provided list,
-    /// removing duplicates and maintaining sorted order.
-    fn exclude_filenames_by_lang(&self) -> Vec<String> {
-        let default = match self.lang {
-            CodeLang::Python => py_base::EXCLUDE_FILENAMES,
-            CodeLang::Rust => rust_base::RUST_EXCLUDE_FILENAMES,
-        };
-
-        Self::normalize_list(default, &self.filenames, false)
-    }
-
-    /// Normalizes the list of file extensions with language semantics.
-    ///
-    /// Adds language-specific default extensions to user-provided ones,
-    /// ensuring uniqueness and canonical format (without leading dots).
-    fn normalize_ext_by_lang(&self) -> Vec<String> {
-        let default = match self.lang {
-            CodeLang::Python => py_base::VALID_EXTENSIONS,
-            CodeLang::Rust => rust_base::RUST_VALID_EXTENSIONS,
-        };
-
-        Self::normalize_list(default, &self.extension, true)
-    }
-
-    /// Universal method for normalizing string lists.
-    ///
-    /// Merges default values with user-provided entries, normalizing them
-    /// to a common format. When `normalize_dot: true`, removes leading dots
-    /// (for file extensions), guarantees uniqueness through sorting
-    /// and deduplication.
-    fn normalize_list(default: &[&str], user: &[String], normalize_dot: bool) -> Vec<String> {
-        let mut result: Vec<String> = default.iter().map(|s| s.to_string()).collect();
-
-        for item in user.iter() {
-            let mut norm = Self::normalize_case(item);
-
-            if normalize_dot {
-                norm = norm.trim_start_matches('.').to_string();
-            }
-
-            result.push(norm);
-        }
-
-        result.sort();
-        result.dedup();
-        result
-    }
-
-    /// Normalizes string case according to platform conventions.
-    ///
-    /// On Windows, converts to lowercase for case-insensitive consistency.
-    /// On other platforms, returns the string unchanged.
-    #[cfg(windows)]
-    fn normalize_case(s: &str) -> String {
-        s.to_lowercase()
-    }
-
-    #[cfg(not(windows))]
-    fn normalize_case(s: &str) -> String {
-        s.to_string()
+        Ok(ArgsResult {
+            collector,
+            verbose: args.verbose,
+        })
     }
 
     /// Returns a detailed string representation suitable for verbose output.
     ///
     /// Shows all fields with their values, formatted for readability.
-    pub fn verbose_display(&self) -> String {
-        let dirs = Self::join_or_wildcard(&self.dirs, ", ");
-        let filenames = Self::join_or_wildcard(&self.filenames, ", ");
-        let marker_files = Self::join_or_wildcard(&self.marker_files, ", ");
+    pub(super) fn verbose_display(&self) -> String {
+        fn join_or_wildcard<I, T>(items: I, separator: &str) -> String
+        where
+            I: IntoIterator<Item = T>,
+            T: AsRef<str>,
+        {
+            let mut iter = items.into_iter();
+            if let Some(first) = iter.next() {
+                let mut result = first.as_ref().to_string();
+                for item in iter {
+                    result.push_str(separator);
+                    result.push_str(item.as_ref());
+                }
+                result
+            } else {
+                "not set".to_string()
+            }
+        }
+
+        let collector = &self.collector;
+
+        let dirs = join_or_wildcard(collector.exclude_dirs().iter(), ", ");
+        let filenames = join_or_wildcard(collector.exclude_files().iter(), ", ");
+        let marker_files = join_or_wildcard(collector.marker_files().iter(), ", ");
 
         format!(
             "Arguments:\n\
@@ -278,50 +182,16 @@ impl ArgsResult {
              ├─ Language: {:?}\n\
              ├─ Skip gather errors: {}\n\
              └─ Verbose: {}",
-            self.path.display(),
+            collector.path().display(),
             dirs,
             marker_files,
-            self.ignore_dot_dirs,
-            self.extension.join(", "),
+            collector.ignore_dot_dirs(),
+            collector.extensions().join(", "),
             filenames,
-            self.lang,
-            self.skip_gather_errors,
+            collector.lang(),
+            collector.skip_errors(),
             self.verbose
         )
-    }
-
-    fn join_or_wildcard<T: AsRef<str>>(items: &[T], separator: &str) -> String {
-        if items.is_empty() {
-            "not set".to_string()
-        } else {
-            items
-                .iter()
-                .map(|item| item.as_ref())
-                .collect::<Vec<_>>()
-                .join(separator)
-        }
-    }
-}
-
-/// Reading command-line parameters with validation.
-///
-/// Control is not returned until valid data is received from the user.
-pub fn read_cmd_args() -> ArgsResult {
-    let args = Args::parse();
-
-    let path = parse_path(args.path);
-
-    ArgsResult {
-        path,
-        auto_config: args.auto_config,
-        dirs: args.exclude_dirs,
-        marker_files: args.marker_files,
-        ignore_dot_dirs: args.ignore_dot_dirs,
-        extension: args.ext,
-        filenames: args.exclude_files,
-        lang: args.lang,
-        skip_gather_errors: !args.no_skip_gather_errors,
-        verbose: args.verbose,
     }
 }
 
@@ -329,46 +199,18 @@ pub fn read_cmd_args() -> ArgsResult {
 ///
 /// If a path is provided, validates it as an existing directory.
 /// If no path is provided, returns the current working directory.
-fn parse_path(args_path: Option<PathBuf>) -> PathBuf {
-    match args_path {
-        Some(path) => validate_directory_path(path),
-        None => get_current_dir(),
-    }
-}
+fn parse_path(args_path: Option<PathBuf>) -> AnyhowResult<PathBuf> {
+    let path = match args_path {
+        Some(p) => p,
+        None => env::current_dir().context("Current directory could not be determined.")?,
+    };
 
-/// Validates that a given path exists and points to a directory.
-///
-/// # Panics
-///
-/// Terminates the program with an error message if:
-/// - The path points to a file instead of a directory
-/// - The path does not exist in the filesystem
-fn validate_directory_path(path: PathBuf) -> PathBuf {
     if path.is_file() {
-        exit_err(format!(
-            "Path must be a directory, not a file: {}",
-            path.display()
-        ));
+        bail!("Path must be a directory, not a file: {}", path.display());
+    }
+    if !path.is_dir() {
+        bail!("Directory not found: {}", path.display());
     }
 
-    if !path.exists() {
-        exit_err(format!("Directory not found: {}", path.display()));
-    }
-
-    path
-}
-
-/// Get path to the current directory.
-fn get_current_dir() -> PathBuf {
-    env::current_dir().expect("ERROR: Current directory could not be determined.")
-}
-
-/// Terminates the application with an error message.
-///
-/// This function prints the provided message to standard error and exits
-/// the process with a non-zero status code, indicating failure.
-/// The `!` return type indicates that this function never returns.
-fn exit_err(message: impl Into<String>) -> ! {
-    eprintln!("ERROR. {}", message.into());
-    exit(1);
+    Ok(path)
 }

@@ -1,4 +1,4 @@
-use pyline_libs::{collector::Collector, errors::PyLineError};
+use pyline_libs::{CodeLanguage, collector::config::Collector, errors::PyLineError};
 use std::{fs::File, path::PathBuf};
 use tokio::fs;
 use uuid::Uuid;
@@ -30,10 +30,10 @@ async fn setup_test_dir() -> PathBuf {
 async fn test_basic_collection() -> Result<(), PyLineError> {
     let root = setup_test_dir().await;
 
-    let files = Collector::new(&root)
-        .extensions(["py"])
-        .ignore_dot_dirs(true)
-        .exclude_files(["README.md"])
+    let files = Collector::new(&root, CodeLanguage::Python, false)
+        .with_extensions(["py"])
+        .with_ignore_dot_dirs(true)
+        .with_exclude_files(["README.md"])
         .complete()
         .await?;
 
@@ -47,9 +47,9 @@ async fn test_basic_collection() -> Result<(), PyLineError> {
 async fn test_include_dot_dirs() -> Result<(), PyLineError> {
     let root = setup_test_dir().await;
 
-    let files = Collector::new(&root)
-        .extensions(["py"])
-        .ignore_dot_dirs(false)
+    let files = Collector::new(&root, CodeLanguage::Python, false)
+        .with_extensions(["py"])
+        .with_ignore_dot_dirs(false)
         .complete()
         .await?;
 
@@ -76,10 +76,10 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
     let file = subdir.join("ignoreme.py");
     File::create(&file)?;
 
-    let files = Collector::new(&root)
-        .extensions(["py"])
-        .exclude_dirs(["node_modules"])?
-        .ignore_dot_dirs(false)
+    let files = Collector::new(&root, CodeLanguage::Python, false)
+        .with_extensions(["py"])
+        .with_exclude_dirs(["node_modules"])?
+        .with_ignore_dot_dirs(false)
         .complete()
         .await?;
 
@@ -98,7 +98,7 @@ async fn test_exclude_dot_dir_error() {
     let root = setup_test_dir().await;
 
     // Этот вызов должен возвращать ошибку из-за .git в exclude_dirs.
-    let result = Collector::new(&root).exclude_dirs([".git"]);
+    let result = Collector::new(&root, CodeLanguage::Python, false).with_exclude_dirs([".git"]);
 
     assert!(result.is_err());
 }

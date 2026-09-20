@@ -3,6 +3,23 @@
 use crate::{define_lang_struct, display_for_lang};
 use std::fmt::{Display, Formatter};
 
+#[derive(Debug, Default, Clone)]
+pub enum CodeLanguage {
+    Rust,
+
+    #[default]
+    Python,
+}
+
+impl Display for CodeLanguage {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CodeLanguage::Python => f.write_str("Python, https://www.python.org/"),
+            CodeLanguage::Rust => f.write_str("Rust, https://rust-lang.org/"),
+        }
+    }
+}
+
 /// Data structure with statistics of analyzed files.
 #[derive(Debug, Default, Clone)]
 pub struct CodeFilesStat {

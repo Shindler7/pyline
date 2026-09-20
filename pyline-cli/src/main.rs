@@ -5,19 +5,19 @@
 //!
 //! Shindler7, 2025.
 
-use pyline_libs::traits::{CodeParsers, FileDataExt};
 mod cli;
+mod normalize;
 mod tools;
 
-use crate::{
-    cli::{ArgsResult, CodeLang},
-    tools::show_dot,
-};
+use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
+
 use pyline_libs::{
-    collector::{Collector, CollectorResult, FileData},
+    CodeLanguage, CollectorResult, FileData, FileDataExt,
+    collector::Collector,
     errors::PyLineError,
     parser::{Python, Rust},
+    traits::CodeParsers,
 };
 use std::{
     process::exit,
@@ -38,20 +38,20 @@ async fn main() -> AnyhowResult<()> {
 }
 
 /// Main loop function.
-async fn run() -> Result<(), PyLineError> {
-    let cli_result = cli::read_cmd_args().normalize_by_lang();
+async fn run() -> AnyhowResult<()> {
+    let cli_result = ArgsResult::from_clap()?;
 
-    println!("\nSelected language: {}\n", cli_result.lang);
+    println!("\nSelected language: {}\n", cli_result.collector.lang());
     println!(
         "The files in the directory are being examined: {}",
-        cli_result.path.display()
+        cli_result.collector.path().display()
     );
 
     if cli_result.verbose {
         println!("\n{}", cli_result.verbose_display());
     }
 
-    let files = collect_files(&cli_result).await?;
+    let files = collect_files(&cli_result.collector).await?;
 
     // About errors and verbose.
     if files.has_errors() {
@@ -81,7 +81,7 @@ async fn run() -> Result<(), PyLineError> {
     Ok(())
 }
 
-async fn collect_files(cli_result: &ArgsResult) -> Result<CollectorResult, PyLineError> {
+async fn collect_files(collector: &Collector) -> Result<CollectorResult, PyLineError> {
     let running = Arc::new(AtomicBool::new(true));
     let spinner_handle = {
         let running = running.clone();
@@ -90,15 +90,7 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<CollectorResult, PyLin
 
     print!("\nGathering files for analysis... ");
 
-    let files = Collector::new(&cli_result.path)
-        .ignore_dot_dirs(cli_result.ignore_dot_dirs)
-        .extensions(&cli_result.extension)
-        .exclude_dirs(&cli_result.dirs)?
-        .with_marker_files(&cli_result.marker_files)
-        .exclude_files(&cli_result.filenames)
-        .skip_errors(cli_result.skip_gather_errors)
-        .complete()
-        .await?;
+    let files = collector.complete().await?;
 
     // Spinner stop.
     running.store(false, Ordering::Relaxed);
@@ -118,15 +110,15 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<CollectorResult, PyLin
 async fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
     print!("\nGathering code stats... ");
 
-    match cli_result.lang {
-        CodeLang::Python => {
+    match cli_result.collector.lang() {
+        CodeLanguage::Python => {
             let mut python_stats = Python::new();
             python_stats.parse(files).await?;
 
             print!("OK.");
             println!("\n{}\n", python_stats);
         }
-        CodeLang::Rust => {
+        CodeLanguage::Rust => {
             let mut rust_stats = Rust::new();
             rust_stats.parse(files).await?;
 

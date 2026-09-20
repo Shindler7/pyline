@@ -15,5 +15,8 @@ pub mod macros;
 pub mod py;
 pub mod rust;
 pub mod traits;
-pub mod types;
 pub mod utils;
+
+pub use collector::{Collector, CollectorResult, FileDataExt};
+pub use collector::models::FileData;
+pub use parser::CodeLanguage;

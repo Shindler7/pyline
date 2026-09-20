@@ -150,12 +150,12 @@ macro_rules! define_lang_struct {
 ///
 /// # Example Usage
 /// ```no_run
-/// use std::collections::HashMap;
-/// use pyline_libs::collector::FileData;
-/// use pyline_libs::traits::CodeParsers;
-/// use pyline_libs::parser::CodeFilesStat;
-/// use pyline_libs::errors::PyLineError;
 /// use pyline_libs::impl_lang_parser;
+/// use pyline_libs::errors::PyLineError;
+/// use pyline_libs::collector::models::FileData;
+/// use pyline_libs::parser::CodeFilesStat;
+/// use pyline_libs::traits::CodeParsers;
+/// use std::collections::HashMap;
 /// use tokio::fs::File;
 /// use tokio::io::BufReader;
 ///

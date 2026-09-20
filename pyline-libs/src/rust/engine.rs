@@ -1,4 +1,4 @@
-use crate::collector::FileData;
+use crate::collector::models::FileData;
 use crate::errors::PyLineError;
 use crate::impl_lang_parser;
 use crate::parser::Rust;
