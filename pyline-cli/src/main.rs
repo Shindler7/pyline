@@ -24,8 +24,8 @@ use pyline_libs::{
 use std::{
     process::exit,
     sync::{
-        atomic::{AtomicBool, Ordering},
         Arc,
+        atomic::{AtomicBool, Ordering},
     },
 };
 
