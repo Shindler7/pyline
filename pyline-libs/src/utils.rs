@@ -1,52 +1,47 @@
-//! Supporting utility library.
+//! Miscellaneous helpers.
 
-use crate::errors::PyLineError;
-
-/// Converts a number of bytes into human-readable size units.
+/// Formats a byte count as a human-readable string using binary prefixes
+/// (`KB`, `MB`, `GB`, `TB`).
 ///
-/// Returns a formatted string with appropriate units (bytes, KB, MB, GB, TB).
-/// Returns an error if unable to determine the appropriate unit.
+/// Values below 10 use one decimal place; larger values are rounded to
+/// integers.
+///
+/// # Examples
 ///
 /// ```
 /// use pyline_libs::utils::format_file_size;
 ///
-/// let result = format_file_size(u64::MAX);
-/// assert!(result.is_ok()); // Should handle large values correctly
-///
-/// // Integration with error handling
-/// match format_file_size(500) {
-///     Ok(size_str) => println!("File size: {}", size_str),
-///     Err(err) => eprintln!("Failed to format file size: {}", err),
-/// }
+/// assert_eq!(format_file_size(0), "0 bytes");
+/// assert_eq!(format_file_size(1), "1 byte");
+/// assert_eq!(format_file_size(2048), "2.0 KB");
+/// assert_eq!(format_file_size(10 * 1024 * 1024), "10 MB");
 /// ```
-pub fn format_file_size(bytes: u64) -> Result<String, PyLineError> {
+pub fn format_file_size(bytes: u64) -> String {
     const UNITS: &[(&str, u64)] = &[
-        ("bytes", 1),
-        ("Kb", 1024),
-        ("Mb", 1024_u64.pow(2)),
-        ("Gb", 1024_u64.pow(3)),
-        ("Tb", 1024_u64.pow(4)),
+        ("TB", 1 << 40), // 1024^4
+        ("GB", 1 << 30), // 1024^3
+        ("MB", 1 << 20), // 1024^2
+        ("KB", 1 << 10), // 1024
     ];
 
-    if bytes == 0 {
-        return Ok("0 bytes".to_string());
+    if bytes < 1024 {
+        return if bytes == 1 {
+            "1 byte".to_string()
+        } else {
+            format!("{bytes} bytes")
+        };
     }
 
     let (label, divisor) = UNITS
         .iter()
-        .rev()
         .find(|(_, div)| bytes >= *div)
-        .ok_or_else(|| PyLineError::scanner_error("failed to determine file size unit"))?;
+        .expect("UNITS covers all values >= 1024");
 
-    if *label == "б" {
-        Ok(format!("{} {}", bytes, label))
+    let size = bytes as f64 / *divisor as f64;
+
+    if size < 10.0 {
+        format!("{:.1} {}", size, label)
     } else {
-        let size = bytes as f64 / *divisor as f64;
-        let result = if size < 10.0 {
-            format!("{:.1} {}", size, label)
-        } else {
-            format!("{:.0} {}", size, label)
-        };
-        Ok(result)
+        format!("{:.0} {}", size, label)
     }
 }

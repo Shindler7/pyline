@@ -1,22 +1,21 @@
-//! API for parsing code files.
+//! Core library for `pyline`: file collection and source parsing.
 //!
-//! Contains two mechanisms:
-//! - file collector — builds a dump of references to valid files;
-//! - code file parser — consists of two components: universal methods and language-specific
-//!   implementations (e.g., for Python).
+//! The crate provides two main parts:
+//! - [`collector`] — gathers paths to files matching a set of filters;
+//! - [`parsers`] — a [`CodeParsers`](traits::CodeParsers) trait with
+//!   language-specific implementations (Python, Rust).
 //!
-//! Custom error types defined in `errors.rs`.
+//! Custom error types live in [`errors`].
 
 pub mod collector;
 pub mod errors;
-#[macro_use]
-pub mod parser;
 pub mod macros;
+pub mod parser;
 pub mod py;
 pub mod rust;
 pub mod traits;
 pub mod utils;
 
-pub use collector::{Collector, CollectorResult, FileDataExt};
 pub use collector::models::FileData;
-pub use parser::CodeLanguage;
+pub use collector::{Collector, CollectorResult, FileDataExt};
+pub use parser::{CodeFilesStat, CodeLanguage};

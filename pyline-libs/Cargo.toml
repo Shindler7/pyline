@@ -1,9 +1,11 @@
 [package]
 name = "pyline-libs"
-version = "0.4.2"
+version = "0.1.0"
+authors.workspace = true
+readme.workspace = true
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
 edition = "2024"
-license = "MIT"
+license.workspace = true
 description = """
 PyLine - Codebase Analyzer
 

@@ -1,11 +1,11 @@
-use crate::FileData;
-use crate::errors::PyLineError;
+//! Result of a file collection operation, tracking both files and errors.
 
-/// Result of a file collection operation with error tracking.
+use crate::{FileData, errors::PyLineError};
+
+
+/// Result of a file collection operation.
 ///
-/// Contains both successfully collected files and any errors encountered
-/// during the collection process. This allows for partial success scenarios
-/// where some files are processed successfully while others fail.
+/// Holds successfully collected files and any errors encountered.
 #[derive(Default)]
 pub struct CollectorResult {
     /// Successfully collected files.

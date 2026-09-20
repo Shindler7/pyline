@@ -1,9 +1,9 @@
-//! Library new types.
+//! New type wrappers over collections of strings.
 //!
-//! Provides wrappers over primitive types for type-safe
-//! representation of domain values.
+//! Provides type-safe representations for file names, directory names,
+//! and file extensions.
 
-use crate::collector::traits::LangDefaults;
+use crate::collector::traits::WithDefaults;
 use std::collections::HashSet;
 
 fn normalize_verbatim(s: String) -> Option<String> {
@@ -18,13 +18,20 @@ fn normalize_ext(mut s: String) -> Option<String> {
     }
 
     let dots = s.bytes().take_while(|&b| b == b'.').count();
-    if dots > 0 {
-        s.drain(..dots);
-    }
+    s.drain(..dots);
 
     normalize_verbatim(s)
 }
 
+/// Defines a new type wrapper around `HashSet<String>` with the given
+/// name, doc comment, and normalization function.
+///
+/// # Parameters
+///
+/// * `$name` — identifier of the generated type.
+/// * `$doc_expr` — doc string for the type.
+/// * `$normalize` — function applied to each inserted value; returning
+///   `None` skips the value.
 macro_rules! string_set_type {
     (
         $name: ident,
@@ -37,6 +44,10 @@ macro_rules! string_set_type {
         pub struct $name(HashSet<String>);
 
         impl $name {
+            /// Inserts a value after normalization.
+            ///
+            /// Returns `true` if the value was newly inserted, `false` if it was
+            /// a duplicate or normalized to `None`.
             pub fn insert<S: Into<String>>(&mut self, raw: S) -> bool {
                 match $normalize(raw.into()) {
                     Some(s) => self.0.insert(s),
@@ -44,14 +55,17 @@ macro_rules! string_set_type {
                 }
             }
 
+            /// Iterates over the stored values.
             pub fn iter(&self) -> impl Iterator<Item = &str> {
                 self.0.iter().map(String::as_str)
             }
 
+            /// Consumes `self` and returns the underlying set.
             pub fn into_inner(self) -> HashSet<String> {
                 self.0
             }
 
+            /// Returns `true` if the collection is empty.
             pub fn is_empty(&self) -> bool {
                 self.0.is_empty()
             }
@@ -87,15 +101,13 @@ macro_rules! string_set_type {
     };
 }
 
-string_set_type!(Files, "A collection of file paths.", normalize_verbatim);
-string_set_type!(Dirs, "A collection of directory paths.", normalize_verbatim);
-string_set_type!(
-    Extensions,
-    "A collection of file extensions.",
-    normalize_ext
-);
+string_set_type!(Files, "A set of file names.", normalize_verbatim);
+string_set_type!(Dirs, "A set of directory names.", normalize_verbatim);
+string_set_type!(Extensions, "A set of file extensions.", normalize_ext);
 
 impl Extensions {
+    /// Returns all extensions joined by `sep`, sorted for deterministic
+    /// output.
     pub fn join(&self, sep: &str) -> String {
         let mut v: Vec<&str> = self.0.iter().map(String::as_str).collect();
         v.sort_unstable();
@@ -103,20 +115,24 @@ impl Extensions {
     }
 }
 
-impl LangDefaults for Extensions {
-    fn with_defaults(default: &[&str]) -> Self {
-        default.iter().copied().collect()
-    }
+/// Implements [`WithDefaults`] for a string-set type by collecting the
+/// provided defaults.
+macro_rules! lang_defaults {
+    ($name: ident) => {
+        impl WithDefaults for $name {
+            fn with_defaults(default: &[&str]) -> Self {
+                default.iter().copied().collect()
+            }
+        }
+
+        impl From<&[&str]> for $name {
+            fn from(s: &[&str]) -> Self {
+                Self::with_defaults(s)
+            }
+        }
+    };
 }
 
-impl LangDefaults for Files {
-    fn with_defaults(default: &[&str]) -> Self {
-        default.iter().copied().collect()
-    }
-}
-
-impl LangDefaults for Dirs {
-    fn with_defaults(default: &[&str]) -> Self {
-        default.iter().copied().collect()
-    }
-}
+lang_defaults!(Files);
+lang_defaults!(Dirs);
+lang_defaults!(Extensions);

@@ -1,6 +1,8 @@
-//! Tools and utils for pyline.
+//! Miscellaneous helpers for the `pyline-cli` crate.
 
+use anyhow::{Context, Result as AnyhowResult};
 use std::{
+    io,
     io::Write,
     sync::{
         Arc,
@@ -14,14 +16,26 @@ use tokio::time;
 ///
 /// Outputs a growing sequence of dots (`.`) at 10 FPS to indicate
 /// ongoing activity. Stops when `running` is set to false.
-pub async fn show_dot(running: Arc<AtomicBool>) {
+pub async fn show_dot(running: Arc<AtomicBool>) -> AnyhowResult<()> {
     const SLEEP_DURATION: Duration = Duration::from_millis(100);
 
     while running.load(Ordering::Relaxed) {
-        print!(".");
-        Write::flush(&mut std::io::stdout()).unwrap();
+        {
+            let mut stdout = io::stdout().lock();
+
+            print!(".");
+            stdout
+                .flush()
+                .context("Failed to flush stdout during loading animation")?;
+        }
+
         time::sleep(SLEEP_DURATION).await;
     }
 
-    Write::flush(&mut std::io::stdout()).unwrap();
+    println!();
+    io::stdout()
+        .flush()
+        .context("Failed to final flush stdout after animation stopped")?;
+
+    Ok(())
 }

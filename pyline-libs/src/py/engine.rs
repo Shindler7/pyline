@@ -1,129 +1,183 @@
-use crate::collector::models::FileData;
-use crate::errors::PyLineError;
-use crate::impl_lang_parser;
-use crate::parser::Python;
-use crate::py::base::{KEYWORDS, PyKeywords};
-use crate::py::py_methods::is_triple_quotes;
-use crate::traits::CodeParsers;
+//! Python line-by-line parsing logic.
+
+use crate::{
+    FileData,
+    errors::PyLineError,
+    impl_lang_parser,
+    parser::Python,
+    py::base::{KEYWORDS, PyKeywords},
+    traits::CodeParsers,
+};
+
 use std::collections::HashMap;
-use tokio::fs::File;
-use tokio::io::{AsyncBufReadExt, BufReader};
+
+use tokio::{
+    fs::File,
+    io::{AsyncBufReadExt, BufReader},
+};
 
 impl_lang_parser!(Python);
 
-/// Result of parsing a Python source line.
-enum PythonResult {
-    /// Successfully parsed code containing Python keywords.
-    Code(HashMap<PyKeywords, usize>),
+/// Outcome of parsing a single line.
+struct ParsedLine {
+    /// Keywords found on the line, with their counts.
+    keywords: HashMap<PyKeywords, usize>,
 
-    /// Line contains no relevant code (comments, blank lines, etc.).
-    NoCode,
+    /// Whether the line contains code (not a comment or blank).
+    is_code: bool,
 
-    /// Entered a triple-quoted string literal (`'''` or `"""`).
-    /// The `char` indicates the quote character used (`'` or `"`).
-    InTripleQuotes(char),
-
-    /// Exited a triple-quoted string literal.
-    EndTripleQuotes,
+    /// Open triple-quote state carried to the next line, if any.
+    triple_quotes: Option<char>,
 }
 
 impl Python {
-    /// Parses lines from a buffered file reader and updates Python code
-    /// statistics.
+    /// Reads `reader` line by line, updating `stats`.
     ///
-    /// Analyzes each line to identify code lines, comments, and Python
-    /// keywords, updating the provided statistics structure accordingly.
+    /// # Errors
+    ///
+    /// Returns [`PyLineError`] if reading from the file fails.
     async fn parse_code_lines(
-        cursor: BufReader<File>,
-        code_stats: &mut Python,
+        mut reader: BufReader<File>,
+        stats: &mut Python,
     ) -> Result<(), PyLineError> {
         let mut triple_quotes: Option<char> = None;
+        let mut buf = String::new();
 
-        let mut lines = cursor.lines();
-        while let Some(line) = lines.next_line().await? {
-            code_stats.count_line();
+        while reader.read_line(&mut buf).await? > 0 {
+            stats.count_line();
 
-            match Self::parse_line(&line, triple_quotes) {
-                PythonResult::Code(stat) => {
-                    code_stats.count_code_line();
+            let line = buf.trim_end_matches(['\r', '\n']);
+            let parsed = Self::parse_line(line, triple_quotes);
+            triple_quotes = parsed.triple_quotes;
 
-                    for (k, v) in stat {
-                        *code_stats.keywords.entry(k.to_string()).or_insert(0) += v;
-                    }
+            if parsed.is_code {
+                stats.count_code_line();
+
+                for (k, v) in parsed.keywords {
+                    *stats.keywords.entry(k.to_string()).or_insert(0) += v;
                 }
-                PythonResult::NoCode => {}
-                PythonResult::InTripleQuotes(quotes) => {
-                    triple_quotes = Some(quotes);
-                }
-                PythonResult::EndTripleQuotes => {
-                    triple_quotes = None;
-                }
-            };
+            }
+
+            buf.clear();
         }
 
         Ok(())
     }
 
-    /// Parse one line.
-    fn parse_line(line: &str, triple_quotes: Option<char>) -> PythonResult {
-        let (mut in_triple_quotes, mut quotes) = match triple_quotes {
-            Some(quotes) => (true, quotes),
-            None => (false, '\0'),
-        };
+    /// Parses a single line, tracking triple-quote state across lines.
+    fn parse_line(line: &str, mut triple_quotes: Option<char>) -> ParsedLine {
         let mut code_map: HashMap<PyKeywords, usize> = HashMap::new();
-        let mut buf_keyword = String::new();
+        let mut token_start: Option<usize> = None;
+        let mut has_code = false;
 
         let mut chars = line.char_indices().peekable();
+
         while let Some((i, ch)) = chars.next() {
-            match (in_triple_quotes, ch) {
-                (false, '#') => {
-                    return if code_map.is_empty() {
-                        PythonResult::NoCode
+            if let Some(open_q) = triple_quotes {
+                if ch == open_q && Self::is_triple_quote_at(line, i, ch) {
+                    chars.next();
+                    chars.next();
+                    triple_quotes = None;
+                }
+                continue;
+            }
+
+            match ch {
+                '#' => {
+                    Self::flush_keyword(line, token_start.take(), i, &mut code_map);
+                    break;
+                }
+
+                '\'' | '"' => {
+                    Self::flush_keyword(line, token_start.take(), i, &mut code_map);
+
+                    if Self::is_triple_quote_at(line, i, ch) {
+                        chars.next();
+                        chars.next();
+                        triple_quotes = Some(ch);
                     } else {
-                        PythonResult::Code(code_map)
-                    };
-                }
-
-                (true | false, '\'' | '"') => {
-                    if is_triple_quotes(&mut chars, &ch, i) {
-                        if triple_quotes.is_some() && quotes == ch {
-                            return PythonResult::EndTripleQuotes;
-                        } else if triple_quotes.is_none() {
-                            quotes = ch;
-                            in_triple_quotes = true;
-                        }
-                    }
-                    buf_keyword.clear();
-                }
-
-                (false, ' ' | '\u{00A0}' | '\t' | '=' | '(' | ')' | ':' | '.' | '{' | '}') => {
-                    buf_keyword.clear()
-                }
-
-                (false, _) => {
-                    buf_keyword.push(ch);
-                    match Self::parse_keywords(&buf_keyword) {
-                        Some(keywords) => {
-                            *code_map.entry(keywords).or_insert(0) += 1;
-                            buf_keyword.clear();
-                        }
-                        None => {
-                            continue;
-                        }
+                        has_code = true;
+                        Self::skip_quoted_string(&mut chars, ch);
                     }
                 }
-                _ => continue,
+
+                _ if Self::is_ident_char(ch) => {
+                    has_code = true;
+                    token_start.get_or_insert(i);
+                }
+
+                _ => {
+                    Self::flush_keyword(line, token_start.take(), i, &mut code_map);
+                    if !ch.is_whitespace() {
+                        has_code = true;
+                    }
+                }
             }
         }
 
-        if in_triple_quotes {
-            return PythonResult::InTripleQuotes(quotes);
-        }
+        Self::flush_keyword(line, token_start.take(), line.len(), &mut code_map);
 
-        PythonResult::Code(code_map)
+        ParsedLine {
+            keywords: code_map,
+            is_code: has_code,
+            triple_quotes,
+        }
     }
 
+    /// Looks up `keyword` in [`KEYWORDS`].
+    #[inline]
     fn parse_keywords(keyword: &str) -> Option<PyKeywords> {
-        KEYWORDS.get(keyword.to_lowercase().as_str()).cloned()
+        KEYWORDS.get(keyword).copied()
+    }
+
+    /// Returns `true` if `ch` can appear in an identifier.
+    #[inline]
+    fn is_ident_char(ch: char) -> bool {
+        ch.is_alphabetic() || ch == '_' || ch.is_ascii_digit()
+    }
+
+    /// Returns `true` if a triple quote starts at byte `idx`.
+    #[inline]
+    fn is_triple_quote_at(line: &str, idx: usize, quote: char) -> bool {
+        let bytes = line.as_bytes();
+        // `quote` is always `'\''` or `'"'`, both ASCII.
+        let q = quote as u8;
+        idx + 2 < bytes.len() && bytes[idx] == q && bytes[idx + 1] == q && bytes[idx + 2] == q
+    }
+
+    /// Records the token `line[start..end]` if it is a keyword.
+    fn flush_keyword(
+        line: &str,
+        start: Option<usize>,
+        end: usize,
+        out: &mut HashMap<PyKeywords, usize>,
+    ) {
+        let Some(start) = start else { return };
+        if let Some(kw) = Self::parse_keywords(&line[start..end]) {
+            *out.entry(kw).or_insert(0) += 1;
+        }
+    }
+
+    /// Advances `chars` past a quoted string delimited by `quote`.
+    ///
+    /// Handles backslash escapes.
+    fn skip_quoted_string<I>(chars: &mut I, quote: char)
+    where
+        I: Iterator<Item = (usize, char)>,
+    {
+        let mut escaped = false;
+
+        for (_, ch) in chars.by_ref() {
+            if escaped {
+                escaped = false;
+                continue;
+            }
+
+            match ch {
+                '\\' => escaped = true,
+                c if c == quote => break,
+                _ => {}
+            }
+        }
     }
 }

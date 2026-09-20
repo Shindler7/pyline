@@ -1,42 +1,28 @@
-//! Declarative macros for implementing language parsers with consistent
-//! formatting.
+//! Declarative macros for generating language parser implementations.
 //!
-//! Provides a set of macros that reduce boilerplate when creating
-//! language-specific parsing implementations. The macros enforce
-//! a standardized structure for:
-//! - Code statistics collection and display
-//! - Parser trait implementation
-//! - Result formatting and keyword tracking
+//! Reduces boilerplate when adding a new language by generating:
+//! - the parser struct with statistics and keyword tracking;
+//! - the [`CodeParsers`] trait implementation;
+//! - the [`Display`] implementation for statistics.
 //!
-//! These macros follow the "inversion of control" pattern, generating
-//! framework code while requiring manual implementation of language-specific
-//! parsing logic.
-//!
-//! # Core Components
-//! - [`display_for_lang!`] - Implements `Display` with standardized output
-//!   format
-//! - [`define_lang_struct!`] - Defines a language analysis structure
-//!   with statistics
-//! - [`impl_lang_parser!`] - Implements the `CodeParsers` trait with async
-//!   file processing
+//! Language-specific logic (`parse_code_lines`, `is_code_line`,
+//! `extract_keywords`) must be implemented manually.
 
-/// Implements `Display` trait for code statistics structures.
+/// Implements [`Display`] for a language statistics struct.
 ///
-/// Generates a standardized output format showing:
-/// - Base statistics (lines, files, code lines)
-/// - Keyword frequencies sorted by count (descending)
+/// The output contains the base statistics followed by keyword
+/// frequencies sorted in descending order.
 ///
-/// ## Usage
+/// # Examples
+///
 /// ```
 /// use pyline_libs::display_for_lang;
-/// use std::fmt::{Display, Formatter};
-/// use std::collections::HashMap;
-/// use pyline_libs::parser::CodeFilesStat;
-///
+/// # use pyline_libs::parser::CodeFilesStat;
+/// # use std::collections::HashMap;
 ///
 /// struct Pascal {
-///     pub stats: CodeFilesStat,
-///     pub keywords: HashMap<String, usize>,
+///     stats: CodeFilesStat,
+///     keywords: HashMap<String, usize>,
 /// }
 ///
 /// display_for_lang!(Pascal);
@@ -44,8 +30,8 @@
 #[macro_export]
 macro_rules! display_for_lang {
     ($instance: ident) => {
-        impl Display for $instance {
-            fn fmt(&self, f: &mut Formatter) -> std::fmt::Result {
+        impl std::fmt::Display for $instance {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
                 write!(f, "{}", self.stats)?;
                 if !self.keywords.is_empty() {
                     write!(f, "\n\nKeywords:")?;
@@ -63,25 +49,25 @@ macro_rules! display_for_lang {
     };
 }
 
-/// Defines a language-specific code analysis structure.
+/// Defines a language statistics struct with keyword tracking.
 ///
-/// Creates a struct with file statistics and keyword tracking,
-/// automatically implementing `Display` formatting.
+/// The generated struct implements [`Display`] via
+/// [`display_for_lang!`].
 ///
-/// ## Example
+/// # Examples
+///
 /// ```
 /// use pyline_libs::define_lang_struct;
-/// use pyline_libs::parser::CodeFilesStat;
-/// use pyline_libs::display_for_lang;
-/// use std::fmt::{Display, Formatter};
-/// use std::collections::HashMap;
+/// # use pyline_libs::display_for_lang;
+/// # use pyline_libs::parser::CodeFilesStat;
 ///
-/// define_lang_struct!(CodeLang);
+/// define_lang_struct!(Pascal);
 /// ```
 #[macro_export]
 macro_rules! define_lang_struct {
     ($name:ident) => {
-        /// Structure for parsing Python files.
+
+        #[doc = concat!("Statistics for the `", stringify!($name), "` parser.")]
         #[derive(Debug, Default, Clone)]
         pub struct $name {
             /// File statistics (lines, files, code lines).
@@ -94,121 +80,19 @@ macro_rules! define_lang_struct {
     };
 }
 
-/// A declarative macro for implementing language-specific parsers with minimal boilerplate.
+/// Implements [`CodeParsers`] for a language type.
 ///
-/// This macro generates the complete implementation of the `CodeParsers` trait for a given
-/// language type, handling common parsing logic while allowing customization through
-/// language-specific methods.
+/// The type must derive `Default` and `Clone` and provide an async
+/// `parse_code_lines` method with the signature
+/// `async fn(BufReader<File>, &mut Self) -> Result<(), PyLineError>`.
+/// The [`CodeParsers`] trait must be in scope at the call site.
 ///
-/// # Design Philosophy
-/// The macro follows the "inversion of control" principle - it provides the framework
-/// (file handling, merging, statistics tracking) while delegating language-specific
-/// parsing logic to methods that must be implemented manually.
+/// # Examples
 ///
-/// # Prerequisites
-/// The target type `$Lang` must implement:
-/// - `Default` trait (for initialization)
-/// - `Clone` trait (for result propagation)
-/// - Have the following fields:
-///   - `stats: CodeStats` - for statistical tracking
-///   - `keywords: HashMap<LangKeyword, usize>` - for keyword frequency counting
-///
-/// # Required Manual Implementations
-/// After using this macro, you MUST implement these methods on `$Lang`:
-///
-/// ```ignore
-/// impl $Lang {
-///     /// Core parsing logic that processes individual lines of code.
-///     /// This is where language-specific syntax analysis happens.
-///     async fn parse_code_lines(
-///         reader: tokio::io::BufReader<tokio::fs::File>,
-///         stats: &mut Self,
-///     ) -> Result<(), PyLineError> { /* ... */ }
-///
-///     /// Determines if a line should be counted as code (not comment/empty).
-///     /// Language-specific logic for identifying actual code lines.
-///     fn is_code_line(line: &str) -> bool { /* ... */ }
-///
-///     /// Extracts and counts keywords from a line of code.
-///     /// Language-specific keyword recognition logic.
-///     fn extract_keywords(line: &str) { /* ... */ }
-/// }
-/// ```
-///
-/// # Generated Implementation
-/// The macro generates:
-/// 1. Complete `CodeParsers` trait implementation including:
-///    - `new_one()` - Creates a new parser instance with file counting
-///    - `merge()`/`merge_ref()` - Combines statistics from multiple parses
-///    - `parse()` - Asynchronously processes multiple files
-///    - Counting methods for files and lines
-///
-/// 2. A private `parse_file()` method that:
-///    - Opens and reads files asynchronously
-///    - Delegates line-by-line parsing to `parse_code_lines()`
-///    - Handles file I/O errors gracefully
-///
-/// # Example Usage
 /// ```no_run
-/// use pyline_libs::impl_lang_parser;
-/// use pyline_libs::errors::PyLineError;
-/// use pyline_libs::collector::models::FileData;
-/// use pyline_libs::parser::CodeFilesStat;
-/// use pyline_libs::traits::CodeParsers;
-/// use std::collections::HashMap;
-/// use tokio::fs::File;
-/// use tokio::io::BufReader;
-///
-///
-/// #[derive(Default, Clone)]
-/// struct PythonParser {
-///     stats: CodeFilesStat,
-///     keywords: HashMap<String, usize>,
-/// }
-///
-/// // Generate the boilerplate implementation
-/// impl_lang_parser!(PythonParser);
-///
-/// // Then implement the language-specific methods
-/// impl PythonParser {
-///     async fn parse_code_lines(reader: BufReader<File>, stats: &mut Self) -> Result<(), PyLineError> {
-///         // Python-specific line parsing
-///         Ok(())
-///     }
-///
-///     fn is_code_line(line: &str) -> bool {
-///         // Python-specific code line detection
-///         !line.trim_start().starts_with('#') && !line.trim().is_empty()
-///     }
-///
-///     fn extract_keywords(line: &str) {
-///         // Python keyword extraction logic
-///     }
-/// }
+/// # use pyline_libs::impl_lang_parser;
+/// // ...
 /// ```
-///
-/// # Error Handling
-/// The generated code handles:
-/// - File not found errors (returns `PyLineError`)
-/// - Invalid file errors (counts them in statistics)
-/// - I/O errors during file reading
-///
-/// # Performance Characteristics
-/// - Uses asynchronous I/O for parallel file processing
-/// - Efficient merging of statistics using `HashMap` operations
-/// - Minimal allocations through careful use of references
-///
-/// # Dependencies
-/// Requires the following in scope:
-/// - `futures::future::join_all` for parallel processing
-/// - `tokio::fs::File` and `tokio::io::BufReader` for async I/O
-/// - `$crate::errors::PyLineError` for error types
-/// - `CodeParsers` trait definition
-///
-/// # Notes
-/// - The macro assumes the use of Tokio runtime for async operations
-/// - Files are processed in parallel when using `parse()`
-/// - Statistics are aggregated incrementally to minimize memory usage
 #[macro_export]
 macro_rules! impl_lang_parser {
     (
@@ -263,7 +147,7 @@ macro_rules! impl_lang_parser {
             }
 
             fn count_invalid_file(&mut self) {
-                self.stats.num_files_not_valid += 1;
+                self.stats.num_files_invalid += 1;
             }
 
             fn count_line(&mut self) {
@@ -284,7 +168,7 @@ macro_rules! impl_lang_parser {
             async fn parse_file(file: &FileData) -> Result<Self, $crate::errors::PyLineError> {
                 let mut code_stats = Self::new_one();
 
-                let code_file = tokio::fs::File::open(&file.path).await?;
+                let code_file = tokio::fs::File::open(&file.path()).await?;
                 let cursor = tokio::io::BufReader::new(code_file);
                 Self::parse_code_lines(cursor, &mut code_stats).await?;
 

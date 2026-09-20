@@ -1,38 +1,9 @@
-//! Default settings for parsing a Rust codebase.
-//!
-//! Include information for correctly building the required files, excluding,
-//! for example, environment directories. Plus a set of keywords that the
-//! parser will use to parse code lines.
+//! Rust keywords for the parser.
+
 use phf::phf_map;
 
-/// Directories to exclude when parsing.
-pub const RUST_EXCLUDE_DIRS: &[&str] = &["target", "build", "dist", "__pycache__"];
-
-/// Dot directories (starting with a dot) to exclude.
-pub const RUST_EXCLUDE_DOT_DIRS: &[&str] = &[
-    ".git",
-    ".idea",
-    ".vscode",
-    ".cargo",
-    ".rustup",
-    ".cache",
-    ".pytest_cache",
-    ".venv",
-    ".env",
-];
-
-/// Filenames to exclude.
-pub const RUST_EXCLUDE_FILENAMES: &[&str] = &["Cargo.lock", ".gitignore", ".gitmodules"];
-
-/// Special marker files whose presence identifies certain directory types.
-pub const RUST_MARKER_FILE: &[&str] = &["rust-toolchain", "rustfmt.toml"];
-
-/// Valid file extensions for analysis.
-pub const RUST_VALID_EXTENSIONS: &[&str] = &["rs"];
-
-/// Rust language keywords.
+/// Rust language keywords and primitive type names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(missing_docs)]
 pub enum RustKeywords {
     // Primitive types
     Bool,
@@ -88,6 +59,7 @@ pub enum RustKeywords {
     Trait,
     True,
     Type,
+    Union,
     Unsafe,
     Use,
     Where,
@@ -106,12 +78,6 @@ pub enum RustKeywords {
     Unsized,
     Virtual,
     Yield,
-
-    // Memory-related keywords
-    Drop,
-    Sizeof,
-    Alignof,
-    Offsetof,
 }
 
 impl std::fmt::Display for RustKeywords {
@@ -171,6 +137,7 @@ impl std::fmt::Display for RustKeywords {
             Self::Trait => "trait",
             Self::True => "true",
             Self::Type => "type",
+            Self::Union => "union",
             Self::Unsafe => "unsafe",
             Self::Use => "use",
             Self::Where => "where",
@@ -189,18 +156,12 @@ impl std::fmt::Display for RustKeywords {
             Self::Unsized => "unsized",
             Self::Virtual => "virtual",
             Self::Yield => "yield",
-
-            // Memory-related keywords
-            Self::Drop => "drop",
-            Self::Sizeof => "sizeof",
-            Self::Alignof => "alignof",
-            Self::Offsetof => "offsetof",
         };
-        write!(f, "{}", s)
+        f.write_str(s)
     }
 }
 
-/// Rust keywords map for fast lookups.
+/// Maps Rust keyword strings to [`RustKeywords`].
 pub(crate) static RUST_KEYWORDS: phf::Map<&'static str, RustKeywords> = phf_map! {
     // Primitive types
     "bool" => RustKeywords::Bool,
@@ -256,6 +217,7 @@ pub(crate) static RUST_KEYWORDS: phf::Map<&'static str, RustKeywords> = phf_map!
     "trait" => RustKeywords::Trait,
     "true" => RustKeywords::True,
     "type" => RustKeywords::Type,
+    "union" => RustKeywords::Union,
     "unsafe" => RustKeywords::Unsafe,
     "use" => RustKeywords::Use,
     "where" => RustKeywords::Where,
@@ -274,10 +236,4 @@ pub(crate) static RUST_KEYWORDS: phf::Map<&'static str, RustKeywords> = phf_map!
     "unsized" => RustKeywords::Unsized,
     "virtual" => RustKeywords::Virtual,
     "yield" => RustKeywords::Yield,
-
-    // Memory-related keywords
-    "drop" => RustKeywords::Drop,
-    "sizeof" => RustKeywords::Sizeof,
-    "alignof" => RustKeywords::Alignof,
-    "offsetof" => RustKeywords::Offsetof,
 };

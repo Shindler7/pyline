@@ -1,48 +1,56 @@
+//! File metadata types shared between the collector and the parser.
+
 use crate::{FileDataExt, utils::format_file_size};
 use std::{
     fmt::{Display, Formatter},
     path::PathBuf,
 };
 
-/// Metadata for a source code file to be processed.
+/// Metadata for a source file: its path and size.
 ///
-/// Contains the file path and size information. Used throughout the parsing
-/// pipeline to track files and provide detailed feedback in verbose mode.
+/// Passed from the collector to the parser, and used for verbose output.
 #[derive(Debug, Default)]
 pub struct FileData {
-    /// Full path to the source file.
-    pub path: PathBuf,
+    /// Returns a reference to full path of the source file.
+    path: PathBuf,
 
     /// File size in bytes.
     bytes: u64,
 }
 
 impl FileData {
-    /// Creates a new `FileData` instance with the given path and size.
+    /// Creates a new [`FileData`] from the given path and size.
     pub fn new(path: PathBuf, bytes: u64) -> Self {
         Self { path, bytes }
     }
 
-    /// Returns a detailed string representation suitable for verbose output.
-    /// Includes both the raw byte count and a human-readable size format.
+    /// Returns a human-readable, multi-line description for verbose output.
     ///
-    /// Example output:
+    /// The result includes both the raw byte count and a formatted size, and
+    /// ends with a newline.
     ///
-    /// ```bash
-    ///  File: src/main.py
-    ///  size: 2048 bytes (2.0 KB)
+    /// # Example
+    ///
+    /// ```text
+    /// File: src/main.py
+    ///   size: 2048 bytes (2.0 KB)
     /// ```
     pub fn verbose_display(&self) -> String {
         format!(
             "File: {}\n  size: {} bytes ({})\n",
             self.path.display(),
             self.bytes,
-            format_file_size(self.bytes).unwrap_or("n/a".to_string())
+            format_file_size(self.bytes)
         )
     }
 
+    /// Full path to the source file.
+    pub fn path(&self) -> &PathBuf {
+        &self.path
+    }
+
     /// Returns the file size in bytes.
-    pub fn size(&self) -> u64 {
+    pub fn bytes(&self) -> u64 {
         self.bytes
     }
 }
@@ -53,7 +61,7 @@ impl Display for FileData {
             f,
             "FileAnalysis ({} ({}))",
             self.path.display(),
-            format_file_size(self.bytes).unwrap_or("n/a".to_string())
+            format_file_size(self.bytes)
         )
     }
 }

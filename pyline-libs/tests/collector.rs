@@ -32,13 +32,13 @@ async fn test_basic_collection() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
-        .with_ignore_dot_dirs(true)
+        .with_ignore_dot_dirs(true)?
         .with_exclude_files(["README.md"])
         .complete()
         .await?;
 
     assert_eq!(files.num_files(), 1);
-    assert!(files.files()[0].path.ends_with("example.py"));
+    assert!(files.files()[0].path().ends_with("example.py"));
 
     Ok(())
 }
@@ -49,7 +49,7 @@ async fn test_include_dot_dirs() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
-        .with_ignore_dot_dirs(false)
+        .with_ignore_dot_dirs(false)?
         .complete()
         .await?;
 
@@ -59,7 +59,7 @@ async fn test_include_dot_dirs() -> Result<(), PyLineError> {
     let collected_files: Vec<_> = files
         .files()
         .iter()
-        .map(|f| f.path.file_name().unwrap().to_str().unwrap())
+        .map(|f| f.path().file_name().unwrap().to_str().unwrap())
         .collect();
     assert!(collected_files.contains(&"example.py"));
     assert!(collected_files.contains(&"hidden.py"));
@@ -79,7 +79,7 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
         .with_exclude_dirs(["node_modules"])?
-        .with_ignore_dot_dirs(false)
+        .with_ignore_dot_dirs(false)?
         .complete()
         .await?;
 
@@ -87,7 +87,7 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
         !files
             .files()
             .iter()
-            .any(|f| f.path.ends_with("ignoreme.py"))
+            .any(|f| f.path().ends_with("ignoreme.py"))
     );
 
     Ok(())

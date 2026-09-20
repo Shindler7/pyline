@@ -1,55 +1,16 @@
-//! Default settings for parsing a Python codebase.
+//! Default filters and keywords for the Python parser.
 //!
-//! Include information for correctly building the required files, excluding,
-//! for example, environment directories. Plus a set of keywords that the
-//! parser will use to parse code lines.
+//! Provides directory/file exclusions, valid file extensions, and the
+//! set of Python keywords used for statistics.
+
 use phf::phf_map;
 
-/// Directories to be excluded from the build process.
+/// Python language keywords.
 ///
-/// This list contains common directories that are not part of the actual
-/// source code, such as virtual environments and cache folders. Dot-prefixed
-/// directories (e.g., `.git`, `.venv`) are handled separately by
-/// [`EXCLUDE_DOT_DIRS`] and should not be included here.
-pub const EXCLUDE_DIRS: &[&str] = &["venv", "env", "__pycache__", "mypy_cache"];
-
-/// Directories with a dot prefix (hidden in Unix-like systems) to be excluded
-/// from the build.
-///
-/// These are typically configuration, cache, or IDE-specific directories.
-/// This constant works in conjunction with [`EXCLUDE_DIRS`] to provide
-/// comprehensive filtering.
-pub const EXCLUDE_DOT_DIRS: &[&str] = &[
-    ".pytest_cache",
-    ".venv",
-    ".env",
-    ".git",
-    ".idea",
-    ".vscode",
-    ".eggs",
-    ".cache",
-];
-
-/// File names (without paths) that should be excluded from processing.
-pub const EXCLUDE_FILENAMES: &[&str] = &[];
-
-/// Special marker files whose presence identifies certain directory types.
-///
-/// For example, `pyvenv.cfg` indicates a Python virtual environment directory.
-/// These files are checked to validate or exclude entire directory subtrees.
-pub const MARKER_FILE: &[&str] = &["pyvenv.cfg"];
-
-/// File extensions that are considered valid for source code parsing.
-///
-/// Only files with these extensions will be processed by the parser.
-/// Other files will be ignored even if they pass directory and filename
-/// filtering.
-pub const VALID_EXTENSIONS: &[&str] = &["py"];
-
-/// Python keywords for parsing.
+/// Each variant corresponds to a keyword; the lowercase spelling used
+/// in source code is returned by [`Display`].
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[allow(missing_docs)]
-pub enum PyKeywords {
+pub(crate) enum PyKeywords {
     False,
     None,
     True,
@@ -126,18 +87,18 @@ impl std::fmt::Display for PyKeywords {
             Self::With => "with",
             Self::Yield => "yield",
         };
-        write!(f, "{}", s)
+        f.write_str(s)
     }
 }
 
-/// Case-sensitive static hash map for O(1) keyword lookup.
+/// Static map from lowercased keyword strings to [`PyKeywords`].
 ///
-/// Maps lowercase Python keyword strings to [`PyKeywords`] enum variants.
-/// Note: Python keywords are case-sensitive (`True` vs `true`).
+/// The parser lowercases each token before lookup, so `True`, `False`,
+/// and `None` are keyed as `"true"`, `"false"`, and `"none"`.
 pub(crate) static KEYWORDS: phf::Map<&'static str, PyKeywords> = phf_map! {
-    "false" => PyKeywords::False,
-    "none" => PyKeywords::None,
-    "true" => PyKeywords::True,
+    "False" => PyKeywords::False,
+    "None" => PyKeywords::None,
+    "True" => PyKeywords::True,
     "and" => PyKeywords::And,
     "as" => PyKeywords::As,
     "assert" => PyKeywords::Assert,

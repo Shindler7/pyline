@@ -1,83 +1,50 @@
+//! Recursive directory traversal for [`Collector`].
+
 use crate::{Collector, CollectorResult, FileData, errors::PyLineError};
 use async_recursion::async_recursion;
 use std::path::Path;
 use tokio::fs;
 
 impl Collector {
-    /// Finalizes the configuration and performs the file collection
-    /// operation.
+    /// Traverses the directory tree rooted at [`Collector::path`], applying
+    /// all configured filters, and returns the collected files and errors.
     ///
-    /// This is an **async** method that must be awaited. It traverses
-    /// the directory tree starting from the configured `path`, applying
-    /// all specified filters and exclusions to collect matching files.
+    /// # Errors
     ///
-    /// ## Order of Operations
+    /// Returns an error if `skip_errors` is `false` and a directory cannot
+    /// be read. When `skip_errors` is `true`, such errors are collected into
+    /// [`CollectorResult`] instead.
     ///
-    /// 1. All builder methods (`exclude_dirs`, `exclude_files`, `extensions`,
-    ///    etc.) must be called **before** `complete()`.
-    /// 2. `complete()` consumes the builder and returns a fully
-    ///    populated `Collector`.
-    /// 3. The collected files are available in the `files` field.
+    /// # Examples
     ///
-    /// ## Returns
-    /// - `Ok(CollectorResult)` with collected files and errors (if
-    ///   `skip_errors` is enabled)
-    /// - `Err(PyLineError)` if `skip_errors` is `false` and an error occurs
-    ///
-    /// ## Async Behavior
-    ///
-    /// The method uses async I/O operations.
-    ///
-    /// ## Panics
-    ///
-    /// This method does not panic under normal circumstances. All expected
-    /// error conditions are captured in the `Result` type.
-    ///
-    /// ## Example: Basic Usage
-    ///
-    /// ```ignore
-    /// use std::path::PathBuf;
-    /// use pyline_libs::collector::Collector;
-    /// use pyline_libs::errors::PyLineError;
-    ///
-    /// # async fn example() -> Result<(), PyLineError> {
-    ///
+    /// ```no_run
+    /// # use std::path::PathBuf;
+    /// # use pyline_libs::collector::Collector;
+    /// # use pyline_libs::CodeLanguage;
+    /// # async fn example() -> Result<(), pyline_libs::errors::PyLineError> {
     /// let path = PathBuf::from("/path");
     ///
-    /// let collector = Collector::new(&path)
-    ///     .extensions(["rs", "toml"])
-    ///     .exclude_dirs(["target", ".git"])?
+    /// let result = Collector::new(&path, CodeLanguage::Rust, true)
+    ///     .with_extensions(["rs", "toml"])
+    ///     .with_exclude_dirs(["target"])?
     ///     .complete()
     ///     .await?;
     ///
-    /// println!("Found {} Rust files", collector.num_files());
+    /// println!("Found {} files", result.num_files());
     /// # Ok(())
     /// # }
     /// ```
-    ///
-    /// ## Notes
-    ///
-    /// - The operation respects all filters configured via builder methods
-    /// - By default, dot-directories (starting with `.`) are excluded
-    /// - File collection is recursive unless filtered by `exclude_dirs`
-    /// - Symbolic links are followed according to platform behavior
-    /// - The method has internal parallelism optimizations for large scans
     pub async fn complete(&self) -> Result<CollectorResult, PyLineError> {
         // Parsing...
         self.mapping_files(self.path()).await
     }
 
-    /// Recursively collects files matching the configured criteria.
-    ///
-    /// Traverses directories depth-first, applying all configured filters and exclusions.
-    /// Returns a [`CollectorResult`] containing both successfully collected files
-    /// and any encountered errors (depending on the `skip_errors` setting).
+    /// Recursively collects files under `path` that match the configured
+    /// filters.
     #[async_recursion]
     async fn mapping_files(&self, path: &Path) -> Result<CollectorResult, PyLineError> {
-        // let mut files: Vec<FileData> = Vec::new();
         let mut collector_result = CollectorResult::new();
 
-        // Ok or skip_errors?
         let mut dir_entries = match fs::read_dir(path).await {
             Ok(entries) => entries,
             Err(err) => {
@@ -104,7 +71,7 @@ impl Collector {
             let elem = entry_res.path();
             let metadata = entry_res.metadata().await?;
 
-            if self.is_valid_dir(&elem) {
+            if self.is_collectable_dir(&elem) {
                 // Subfolders
                 match self.mapping_files(&elem).await {
                     Ok(sub_dirs) => collector_result.absorb(sub_dirs),
@@ -125,7 +92,7 @@ impl Collector {
         Ok(collector_result)
     }
 
-    fn is_valid_dir(&self, path: &Path) -> bool {
+    fn is_collectable_dir(&self, path: &Path) -> bool {
         path.is_dir() && !self.is_dir_excluded(path)
     }
 
@@ -135,11 +102,11 @@ impl Collector {
             None => return false,
         };
 
-        if dir_name.starts_with(".") && self.ignore_dot_dirs() {
+        if self.ignore_dot_dirs() && dir_name.starts_with(".") {
             return true;
         }
 
-        #[cfg(target_os = "linux")]
+        #[cfg(not(target_os = "windows"))]
         let dirs_exclude = self
             .exclude_dirs
             .iter()
@@ -155,10 +122,8 @@ impl Collector {
         dirs_exclude || self.should_exclude_dir_by_marker_file(path)
     }
 
-    /// Checks if a directory contains any marker files that warrant exclusion.
-    ///
-    /// Returns `true` if the directory contains any file specified in `marker_files`.
-    /// When a marker file is found, the entire directory tree is skipped.
+    /// Returns `true` if `dir_path` contains any of the configured marker
+    /// files.
     fn should_exclude_dir_by_marker_file(&self, dir_path: &Path) -> bool {
         !self.marker_files().is_empty()
             && self.marker_files().iter().any(|file_name| {

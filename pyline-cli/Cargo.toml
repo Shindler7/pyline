@@ -1,8 +1,10 @@
 [package]
 name = "pyline"
 version.workspace = true
+authors.workspace = true
+readme.workspace = true
 edition = "2024"
-license = "MIT"
+license.workspace = true
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
 description = """
 PyLine is a powerful command-line tool for analyzing codebases with intelligent filtering

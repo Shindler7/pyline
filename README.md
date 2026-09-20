@@ -1,19 +1,23 @@
 # Pyline — CLI Keyword Counter for Source Code
 
 Pyline is a command-line tool for analyzing and counting keywords in source
-code.
-The project consists of a console binary `pyline-cli` and a library crate
+code. The project consists of a console binary `pyline-cli` and a library crate
 `pyline-libs`.
 
 ## Features
 
-- 📁 Recursive directory scanning with configurable exclusions
-- 🔍 Smart file filtering by extension, directory, and filename patterns
-- 📊 Detailed code statistics collection and analysis
-- 🚀 Async-powered performance for large codebases
-- ⚙️ Flexible CLI configuration with multiple filtering options
-- 📈 Keyword frequency analysis across multiple programming languages
-- 🎯 Support for multiple file formats and programming languages
+- **Language-aware analysis** with predefined language profiles (`--lang`)
+- **Automatic configuration** based on language conventions (`--auto-config`)
+- **Smart directory traversal** with multiple exclusion mechanisms:
+    - Exclude specific directories (`--exclude-dirs`)
+    - Skip directories containing marker files (`--marker-files`)
+    - Automatic dot-directory filtering (`--ignore-dot-dirs`)
+- **Flexible file filtering** by extensions (`--ext`) and filenames (
+  `--exclude-files`)
+- **Detailed statistics** including line counts, code lines, and keyword
+  frequencies
+- **Verbose mode** for debugging and detailed progress information (
+  `--verbose`)
 
 ### Supported Languages
 
@@ -24,7 +28,14 @@ The project consists of a console binary `pyline-cli` and a library crate
 
 ### Prerequisites
 
-- Rust Toolchain (Rust and Cargo, version 1.83 or higher)
+- Rust toolchain (Rust and Cargo, version 1.83 or higher)
+
+```shell
+user@WSMegaLand:/$ cargo version
+cargo 1.96.0 (30a34c682 2026-05-25)
+user@WSMegaLand:/$
+```
+
 - [Installation instructions](https://rust-lang.org/tools/install/)
 
 ### Building from Source
@@ -38,16 +49,29 @@ cd pyline
 cargo build --release
 ```
 
-The compiled binaries will be located in target/release/.
+The compiled binaries will be located in `target/release/`.
+
+### Installing
+
+To install the `pyline` binary into your Cargo bin directory (usually
+`~/.cargo/bin`), run from the project root:
+
+```shell
+cargo install --path ./pyline-cli
+```
+
+After that, `pyline` is available on your `PATH`:
+
+```shell
+pyline --help
+```
 
 ### First Run
 
-After building, you can run the application with the --help flag to
-see available options:
+If you installed the binary, just run:
 
 ```shell
-# From the project root
-./target/release/pyline --help
+pyline --help
 ```
 
 For development, you can run the CLI directly from its subdirectory:
@@ -80,8 +104,8 @@ Keywords:
   ...
 ```
 
-**Note**: In the example above, the -p key was used with a folder reference.
-If you need to analyze the current folder, you can omit the key:
+**Note**: In the example above, `-p` was used with an explicit path. To analyze
+the current directory, omit it:
 
 ```shell
 # short
@@ -95,7 +119,7 @@ Let's make it more complex. For example, we don't want to scan directories
 where a main.py file is found. Then we do this:
 
 ```shell
-$ pyline --lang py --auto-config -p d:\coderep -m main.py
+$ pyline --lang py --auto-config -p d:\coderep --marker-files .noscan
 
 Selected language: PYTHON, https://www.python.org/
 
@@ -114,29 +138,12 @@ Keywords:
 ```
 
 **Note**: In the second example, the number of files may be lower if
-directories
-containing main.py are excluded from scanning.
-
-### Key Features
-
-- **Language-aware analysis** with predefined language profiles (`--lang`)
-- **Automatic configuration** based on language conventions (`--auto-config`)
-- **Smart directory traversal** with multiple exclusion mechanisms:
-    - Exclude specific directories (`--exclude-dirs`)
-    - Skip directories containing marker files (`--marker-files`)
-    - Automatic dot-directory filtering (`--ignore-dot-dirs`)
-- **Flexible file filtering** by extensions (`--ext`) and filenames (
-  `--exclude-files`)
-- **Detailed statistics** including line counts, code lines, and keyword
-  frequencies
-- **Verbose mode** for debugging and detailed progress information (
-  `--verbose`)
+directories containing main.py are excluded from scanning.
 
 ## Roadmap
 
 * Add support for more programming languages
 * Implement JSON/CSV output formats
-* Add progress indicators for large codebases
 * Create configuration file support
 
 ## Contributing
@@ -145,74 +152,49 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## Versioning
 
-This project uses independent versioning for each crate in the workspace:
+Each crate in the workspace is versioned independently:
 
-* **`pyline-cli`** — `0.4.3`
-* **`pyline-libs`** — `0.4.2`
+* **`pyline-cli`** — `0.1.0`
+* **`pyline-libs`** — `0.1.0`
+
+> **Note:** Versioning was reset to `0.1.0` after a major refactoring.
+> The previous `0.4.x` / `0.3.x` history was discarded as premature —
+> the project is now being versioned anew from a clean baseline.
 
 ### Changelog
 
-#### cli-0.4.4 (03.03.2026)
+#### 0.1.0
 
-- Minor fix
+Initial release under the new versioning scheme, following a full refactoring
+of both crates. The pre-reset history is summarized below for reference.
 
-#### cli-0.4.3 (06.01.2026)
+<details>
+<summary>Pre-reset history (0.2.0 – 0.4.4)</summary>
 
-- Fixed display of information in the console
+**CLI & general**
 
-#### 0.4.2 (04.01.2026)
-
-- Updated code documentation without changes to the functionality of the
-  console application and library
-
-#### 0.4.1
-
-- Fixed a logical issue with the `--skip-gather-errors` (`-s`) flag.  
-  It has been replaced with `-E` / `--gather-errors`.  
-  **Default behavior**: errors are silently skipped.  
-  **With flag**: access/read errors are collected and reported.
-- The old `--skip-gather-errors` flag has been removed.
-
-#### 0.4.0
-
-- Enhanced file collection performance with configurable error handling
-  and verbose mode support
-- New CLI flag `--skip-gather-errors` (`-s`) for flexible error handling
-  during file collection
 - Added real-time progress visualization during file discovery
-
-#### libs-0.3.2
-
-- A minor bug introduced during the refactoring for Linux compatibility
-  has been fixed.
-
-#### libs-0.3.1
-
-- For Python parsing, clarified handling of intermediate symbols (such
-  as commas, parentheses) that are ignored and reset the accumulated
-  keyword buffer
-
-#### 0.3.0
-
-- Added support for parsing Rust files
-- Unified parsing methods, including macro creation, for easier expansion
-  of supported languages
-
-#### 0.2.0
-
-**pyline-cli**
-
-- Added CLI flags: `--ignore-dot-dirs`, `--auto-config`, `--marker-files`
-- Renamed several existing flags for clarity
+- Added configurable error handling with the `-E` / `--gather-errors` flag
+  (replacing the old `--skip-gather-errors` / `-s`); by default errors are
+  silently skipped, with the flag they are collected and reported
+- Added CLI flags: `--ignore-dot-dirs`, `--auto-config`, `--marker-files`;
+  renamed several existing flags for clarity
 - Added directory exclusion when marker files are detected
 - Added automatic file collection configuration via `--auto-config`
-- Added comprehensive test suite
-- Internal refactoring and improvements
+- Added a comprehensive test suite
+- Improved file collection performance; verbose mode support
+- Minor fixes to console output and documentation
 
-**pyline-libs**
+**Libs & parsing**
 
-- Updated to support new CLI features
-- Minor internal adjustments
+- Added support for parsing Rust files
+- Unified parsing methods (including macro creation) for easier expansion to
+  new languages
+- Clarified handling of intermediate symbols (commas, parentheses) that are
+  ignored and reset the accumulated keyword buffer
+- Fixed a Linux-compatibility bug introduced during refactoring
+
+</details>
 
 ## License
 
@@ -221,5 +203,3 @@ This project is licensed under the MIT License.
 ## Acknowledgments
 
 Built with the amazing Rust programming language.
-
-Inspired by various code analysis tools in the ecosystem.

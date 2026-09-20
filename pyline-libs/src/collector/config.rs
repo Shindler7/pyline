@@ -1,32 +1,32 @@
+//! Configuration for file collection.
+//!
+//! Defines [`Collector`] — the builder that holds filters and settings
+//! for traversal. The traversal itself lives in
+//! [`crate::collector::traversal`].
+
 use crate::{
     CodeLanguage,
-    collector::{
-        traits::LangDefaults,
-        types::{Dirs, Extensions, Files},
-    },
+    collector::types::{Dirs, Extensions, Files},
     errors::PyLineError,
-    py::base as py_base,
-    rust::base as rust_base,
 };
 use std::path::{Path, PathBuf};
 
-/// Configuration for collecting and filtering files from a directory structure.
+/// Configuration for collecting and filtering files from a directory tree.
 ///
-/// Used to define rules for which files and directories should be included
-/// or excluded during file collection operations. All fields have sensible
-/// defaults.
+/// Defines which files and directories are included or excluded during
+/// collection. All fields have defaults.
 #[derive(Default)]
 pub struct Collector {
     /// Root directory path from which to start file collection.
     path: PathBuf,
 
+    /// Target language for parsing.
     lang: CodeLanguage,
 
-    /// List of file names that, when found, cause their parent directories
-    /// to be excluded.
+    /// File names whose presence causes the containing directory to be
+    /// excluded.
     ///
-    /// For example, including `.gitignore` here would skip directories
-    /// containing a `.gitignore` file.
+    /// For example, a directory containing `.gitignore` is skipped entirely.
     marker_files: Files,
 
     /// List of directory names to exclude from traversal.
@@ -35,34 +35,38 @@ pub struct Collector {
     /// List of file names to exclude from collection.
     exclude_files: Files,
 
-    /// List of file extensions to include in collection.
+    /// File extensions to include in collection.
     ///
-    /// Only files with these extensions will be collected. For example,
-    /// `vec!["py", "pyw"]` would collect only Python files. `None` means
-    /// all file extensions are included.
+    /// Only files with these extensions are collected, e.g. `["py", "pyw"]`
+    /// for Python. The language's default extensions are always included.
     extensions: Extensions,
 
     /// Whether to ignore directories starting with a dot (`.`).
     ignore_dot_dirs: bool,
 
-    /// If `true`, access and read errors will be ignored, and the collection will be built only
-    /// from accessible directories/files. Otherwise, the search will
-    /// halt upon encountering any error.
+    /// If `true`, access and read errors are ignored and collection
+    /// continues with accessible entries; otherwise, it halts on the first
+    /// error.
     ///
     /// Default: `true`.
     skip_errors: bool,
 }
 
 impl Collector {
-    /// Create an instance of the Collector struct.
+    /// Creates a new [`Collector`] for the given root `path` and language.
     ///
-    /// Required argument: `path` — the path to the top-level directory
-    /// where file link collection will be performed.
+    /// # Arguments
     ///
-    /// You can refine the search using the following extension methods:
-    /// `exclude_dirs`, `exclude_files`, `extensions`.
+    /// * `path` — root directory to scan.
+    /// * `lang` — target language.
+    /// * `auto_config` — if `true`, applies the language's default marker
+    ///   files, excluded directories, and excluded filenames.
     ///
-    /// ## For example:
+    /// The returned value can be refined with [`Self::with_exclude_dirs`],
+    /// [`Self::with_exclude_files`], [`Self::with_extensions`], and other
+    /// `with_*` methods.
+    ///
+    /// # Examples
     ///
     /// ```
     /// use std::path::PathBuf;
@@ -71,36 +75,25 @@ impl Collector {
     ///
     /// let path = PathBuf::from("/path");
     ///
-    /// let c = Collector::new(&path, CodeLanguage::Python)
-    ///             .with_extensions(["py"])
-    ///             .with_ignore_dot_dirs(false)
-    ///             .with_exclude_dirs(["target", "node_modules"]);
+    /// let collector = Collector::new(&path, CodeLanguage::Python, false)
+    ///     .with_extensions(["py"])
+    ///     .with_ignore_dot_dirs(false).unwrap()
+    ///     .with_exclude_dirs(["target", "node_modules"]).unwrap();
     /// ```
     ///
-    /// By default, the `ignore_dot_dirs` is enabled (set to true),
-    /// meaning all directories starting with a dot (`.`) are ignored.
+    /// By default, `ignore_dot_dirs` is enabled (`true`): all directories
+    /// starting with a dot are ignored.
     pub fn new(path: &Path, lang: CodeLanguage, auto_config: bool) -> Self {
-        use CodeLanguage::*;
+        let lang_defaults = lang.defaults();
 
-        let code_ext = match lang {
-            Python => py_base::VALID_EXTENSIONS,
-            Rust => rust_base::RUST_VALID_EXTENSIONS,
-        };
-        let extensions = Extensions::with_defaults(code_ext);
+        let extensions = lang_defaults.valid_extensions();
 
         let (marker_files, exclude_dirs, exclude_files) = if auto_config {
-            match lang {
-                Python => (
-                    Files::with_defaults(py_base::MARKER_FILE),
-                    Dirs::with_defaults(py_base::EXCLUDE_DIRS),
-                    Files::with_defaults(py_base::EXCLUDE_FILENAMES),
-                ),
-                Rust => (
-                    Files::with_defaults(rust_base::RUST_MARKER_FILE),
-                    Dirs::with_defaults(rust_base::RUST_EXCLUDE_DIRS),
-                    Files::with_defaults(rust_base::RUST_EXCLUDE_FILENAMES),
-                ),
-            }
+            (
+                lang_defaults.marker_files(),
+                lang_defaults.exclude_dirs(),
+                lang_defaults.exclude_filenames(),
+            )
         } else {
             (Files::default(), Dirs::default(), Files::default())
         };
@@ -117,31 +110,31 @@ impl Collector {
         }
     }
 
-    /// Excludes specified directories from file collection.
+    /// Excludes the given directories from collection.
     ///
-    /// Directories starting with '.' (dot-directories) cannot be excluded
-    /// through this method. Use `ignore_dot_dirs(true)` instead to handle them.
+    /// Dot-directories cannot be excluded this way. To exclude them, use
+    /// [`Self::with_ignore_dot_dirs`] instead.
     ///
-    /// ## Arguments
+    /// # Arguments
     ///
-    /// * `dirs` — An iterator of directory names or patterns to exclude
+    /// * `dirs` — directory names to exclude.
     ///
-    /// ## Panics
+    /// # Errors
     ///
-    /// Panics if any directory name starts with '.', as dot-directories
-    /// require special handling via the `ignore_dot_dirs` method.
+    /// Returns an error if any name starts with `.` while `ignore_dot_dirs`
+    /// is enabled, since dot-directories are handled by that flag.
     ///
-    /// ## Example
+    /// # Examples
     ///
-    /// ```ignore
-    /// use std::path::PathBuf;
-    /// use pyline_libs::collector::Collector;
-    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pyline_libs::collector::Collector;
+    /// # use pyline_libs::CodeLanguage;
     /// let path = PathBuf::from("/path");
     ///
-    /// Collector::new(&path)
-    ///     .with_exclude_dirs(["node_modules", "target", "__pycache__"])?
-    ///     .complete();
+    /// let collector = Collector::new(&path, CodeLanguage::Python, false)
+    ///     .with_exclude_dirs(["node_modules", "target"])?;
+    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
     pub fn with_exclude_dirs<I, S>(mut self, dirs: I) -> Result<Self, PyLineError>
     where
@@ -150,7 +143,16 @@ impl Collector {
     {
         let exclude_dirs: Dirs = dirs.into_iter().collect();
 
-        if self.ignore_dot_dirs && exclude_dirs.iter().any(|s| s.starts_with(".")) {
+        self.validate_no_dot_dirs(Some(&exclude_dirs))?;
+        self.exclude_dirs.extend(exclude_dirs.iter());
+
+        Ok(self)
+    }
+
+    fn validate_no_dot_dirs(&self, exclude_dirs: Option<&Dirs>) -> Result<(), PyLineError> {
+        let dirs = exclude_dirs.unwrap_or(&self.exclude_dirs);
+
+        if self.ignore_dot_dirs && dirs.iter().any(|s| s.starts_with(".")) {
             return Err(PyLineError::scanner_error(
                 "Cannot exclude dot-directories (e.g., '.git') \
                     via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
@@ -159,78 +161,72 @@ impl Collector {
             ));
         }
 
-        self.exclude_dirs = exclude_dirs;
-
-        Ok(self)
+        Ok(())
     }
 
-    /// Configures which files should trigger exclusion of their parent directories.
+    /// Sets marker files that exclude their parent directory.
     ///
-    /// When a file with any of the specified names is found in a directory,
-    /// that entire directory (including subdirectories) will be skipped during
-    /// file collection. This is useful for ignoring directories based on marker
-    /// files like `.gitignore`, `.noscan`, etc.
+    /// If a directory contains any of these files, the directory and all its
+    /// subdirectories are skipped during collection. Useful for ignoring
+    /// directories marked by `.gitignore`, `.noscan`, and similar files.
     pub fn with_marker_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.marker_files = files.into_iter().collect();
+        self.marker_files.extend(files);
         self
     }
 
-    /// Excludes specified files from collection by their names.
+    /// Excludes files by name.
     ///
-    /// This filter applies to exact filename matches. For pattern-based
-    /// exclusion, consider implementing additional filtering logic.
+    /// Only exact filename matches are filtered; glob patterns are not
+    /// supported.
     ///
-    /// ## Arguments
+    /// # Arguments
     ///
-    /// * `files` — An iterator of filenames to exclude from collection
+    /// * `files` — filenames to exclude.
     ///
-    /// ## Example
+    /// # Examples
     ///
-    /// ```no_run
-    /// use std::path::PathBuf;
-    /// use pyline_libs::collector::Collector;
-    /// use pyline_libs::CodeLanguage;
-    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pyline_libs::collector::Collector;
+    /// # use pyline_libs::CodeLanguage;
     /// let path = PathBuf::from("/path");
     ///
-    /// Collector::new(&path, CodeLanguage::Python)
-    ///     .with_exclude_files(["README.md", "LICENSE", ".gitignore"])
-    ///     .complete();
+    /// let collector = Collector::new(&path, CodeLanguage::Python, false)
+    ///     .with_exclude_files(["README.md", "LICENSE", ".gitignore"]);
+    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
     pub fn with_exclude_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.exclude_files = files.into_iter().collect();
+        self.exclude_files.extend(files);
         self
     }
 
-    /// Filters files by their extensions.
+    /// Adds file extensions to include in collection.
     ///
-    /// Extensions should be provided without the leading dot (e.g., `"py"`, not `".py"`).
-    /// The method automatically normalizes the input by removing any leading dots.
+    /// Leading dots are stripped: `"py"` and `".py"` are equivalent.
     ///
-    /// ## Arguments
+    /// # Arguments
     ///
-    /// * `ext` — An iterator of file extensions to include
+    /// * `ext` — extensions to include.
     ///
-    /// ## Example
+    /// # Examples
     ///
-    /// ```no_run
-    /// use std::path::PathBuf;
-    /// use pyline_libs::collector::Collector;
-    /// use pyline_libs::CodeLanguage;
-    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pyline_libs::collector::Collector;
+    /// # use pyline_libs::CodeLanguage;
     /// let path = PathBuf::from("/path");
     ///
-    /// Collector::new(&path, CodeLanguage::Rust)
-    ///     .with_extensions(["rs", ".toml"])  // Works with or without dots
-    ///     .complete();
+    /// let collector = Collector::new(&path, CodeLanguage::Rust, false)
+    ///     .with_extensions(["rs", ".toml"]);
+    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
     pub fn with_extensions<I, S>(mut self, ext: I) -> Self
     where
@@ -241,36 +237,44 @@ impl Collector {
         self
     }
 
-    /// Controls whether directories starting with '.' should be ignored.
+    /// Sets whether dot-directories are ignored.
     ///
-    /// Dot-directories (like `.git`, `.venv`, `.idea`) are typically hidden
-    /// and often contain configuration or cache files rather than source code.
+    /// Dot-directories (`.git`, `.venv`, `.idea`) usually contain
+    /// configuration or cache files rather than source code.
     ///
-    /// ## Arguments
+    /// # Arguments
     ///
-    /// * `ignore` — If `true`, all directories starting with '.' are skipped
+    /// * `ignore` — if `true`, directories starting with `.` are skipped.
     ///
-    /// ## Example
+    /// # Errors
     ///
-    /// ```no_run
-    /// use std::path::PathBuf;
-    /// use pyline_libs::collector::Collector;
+    /// Returns an error if `ignore` is `true` and dot-directories are already
+    /// listed in `exclude_dirs` (see [`Self::with_exclude_dirs`]).
     ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use std::path::PathBuf;
+    /// # use pyline_libs::collector::Collector;
+    /// # use pyline_libs::CodeLanguage;
     /// let path = PathBuf::from("/path");
     ///
-    /// Collector::new(&path)
-    ///     .with_ignore_dot_dirs(true)  // Skip .git, .venv, etc.
-    ///     .complete();
+    /// let collector = Collector::new(&path, CodeLanguage::Python, false)
+    ///     .with_ignore_dot_dirs(true)?;
+    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
-    pub fn with_ignore_dot_dirs(mut self, ignore: bool) -> Self {
+    pub fn with_ignore_dot_dirs(mut self, ignore: bool) -> Result<Self, PyLineError> {
+        if ignore {
+            self.validate_no_dot_dirs(None)?;
+        }
         self.ignore_dot_dirs = ignore;
-        self
+        Ok(self)
     }
 
-    /// Sets whether to skip access/read errors and continue processing only accessible items.
+    /// Sets whether access and read errors are skipped.
     ///
-    /// When `true` (default), errors are ignored and collection proceeds with accessible
-    /// directories/files. When `false`, any error immediately halts the search.
+    /// When `true` (default), collection continues with accessible entries;
+    /// when `false`, it halts on the first error.
     pub fn with_skip_errors(mut self, skip: bool) -> Self {
         self.skip_errors = skip;
         self
@@ -287,11 +291,6 @@ impl Collector {
     pub fn lang(&self) -> &CodeLanguage {
         &self.lang
     }
-    //
-    // /// Returns whether autoconfiguration is enabled.
-    // pub fn auto_config(&self) -> bool {
-    //     self.auto_config
-    // }
 
     /// Returns the marker files whose presence excludes parent directories.
     pub fn marker_files(&self) -> &Files {

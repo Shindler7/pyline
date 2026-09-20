@@ -1,10 +1,9 @@
-//! Command-line argument parsing and validation module.
+//! Command-line argument parsing and validation.
 //!
-//! This module handles:
-//! - Parsing CLI arguments using `clap`
-//! - Validating input paths and directories
-//! - Providing sensible defaults when arguments are omitted
-//! - Converting raw arguments into structured configuration for the application
+//! Responsibilities:
+//! - parse CLI arguments with `clap`;
+//! - validate input paths and directories;
+//! - convert raw arguments into the application's [`Collector`] configuration.
 
 use anyhow::{Context, Result as AnyhowResult, bail};
 use clap::{Parser, ValueEnum};
@@ -16,23 +15,20 @@ use std::{env, path::PathBuf};
     intelligent filtering and detailed statistics collection.")]
 #[clap(author, version, long_about = None)]
 struct Args {
-    /// Selects the programming language for parsing from predefined options.
+    /// Programming language to parse.
     #[clap(short, long, required = true)]
     lang: CodeLang,
 
-    /// Enables automatic configuration based on the selected programming
-    /// language.
+    /// Enables automatic configuration based on the selected language.
     ///
-    /// If `false`, all other parameters (`--ext`, `--exclude-dirs`,
-    /// `--exclude-files`, `--ignore-dot-dirs`) must be manually configured
-    /// by the user or will use their default values. **Exception**: file
-    /// extensions (`--ext`) always include basic language-specific extensions
-    /// regardless of the `auto-config` flag.
+    /// If `false`, the other parameters (`--ext`, `--exclude-dirs`,
+    /// `--exclude-files`, `--ignore-dot-dirs`) must be configured manually
+    /// or fall back to their defaults. Exception: `--ext` always includes
+    /// the language's basic extensions regardless of this flag.
     #[clap(short, long, default_value = "false")]
     auto_config: bool,
 
-    /// Path to the directory with files to parse. If not specified,
-    /// the current directory is analyzed.
+    /// Directory to analyze. Defaults to the current working directory.
     #[clap(short, long, value_name = "PATH")]
     path: Option<PathBuf>,
 
@@ -40,36 +36,29 @@ struct Args {
     #[clap[short='x', long, value_name = "DIRECTORIES"]]
     exclude_dirs: Vec<String>,
 
-    /// Marker files that cause their parent directories to be excluded from
-    /// traversal.
+    /// Marker files that cause their parent directories to be excluded
+    /// from traversal.
     ///
-    /// When a directory contains any of the specified marker files, the entire
-    /// directory (including all subdirectories) will be skipped during file
-    /// collection. This is useful for excluding directories based on the
-    /// presence of configuration or metadata files.
+    /// When a directory contains any of the specified marker files, the
+    /// directory and all its subdirectories are skipped. Useful for excluding
+    /// directories based on configuration or metadata files.
     #[clap[short, long, value_name = "MARKER_FILE"]]
     marker_files: Vec<String>,
 
-    /// Ignore directories starting with a dot (e.g., `.git`, `.config`)
-    /// while traversing.
+    /// Ignore directories whose names start with a dot (e.g., `.git`, `.venv`).
     ///
-    /// When this flag is enabled (default: `true`), all directories whose
-    /// names begin with a dot are automatically excluded from the file
-    /// collection process.
-    ///
-    /// ⚠️ If `ignore_dot_dirs` is set to `true`, you **must not** manually
-    /// specify such directories (e.g., `.git`, `.venv`) in the
-    /// `--exclude-dirs` list. Doing so will cause the application to panic
-    /// with an explanatory error. This is by design, as dot-directories are
-    /// already handled separately by this flag.
+    /// When enabled, such directories are excluded from collection
+    /// automatically. They must not be listed in `--exclude-dirs` — this
+    /// is rejected with an error, since dot-directories are already handled
+    /// by this flag.
     #[clap(short, long)]
     ignore_dot_dirs: bool,
 
-    /// File extensions to include in the collection. Can be specified
-    /// multiple times.
+    /// File extensions to include in collection. Can be specified multiple
+    /// times.
     ///
-    /// For the selected language, basic extensions (e.g., `.py` for Python)
-    /// are automatically included alongside any explicitly provided extensions.
+    /// The language's basic extensions (e.g., `.py` for Python) are always
+    /// included alongside any explicitly provided ones.
     #[clap(short, long, value_name = "EXTENSION")]
     ext: Vec<String>,
 
@@ -77,11 +66,11 @@ struct Args {
     #[clap(short = 'X', long, value_name = "FILENAMES")]
     exclude_files: Vec<String>,
 
-    /// Do not skip access/read errors (default: errors are skipped)
+    /// Collect access/read errors instead of silently skipping them.
     #[clap(short = 'E', long = "gather-errors", default_value = "false")]
     no_skip_gather_errors: bool,
 
-    /// Enable verbose output with detailed logging information.
+    /// Enable verbose output.
     #[clap(short, long)]
     verbose: bool,
 }
@@ -122,15 +111,16 @@ pub(super) struct ArgsResult {
 }
 
 impl ArgsResult {
-    /// Reading command-line parameters with validation.
+    /// Parses CLI arguments and builds the resulting configuration.
     ///
-    /// Control is not returned until valid data is received from the user.
+    /// Returns an error if the input path is invalid or the collector
+    /// configuration is rejected.
     pub(super) fn from_clap() -> AnyhowResult<Self> {
         let args = Args::parse();
         let path = parse_path(args.path)?;
 
         let collector = Collector::new(&path, args.lang.into(), args.auto_config)
-            .with_ignore_dot_dirs(args.ignore_dot_dirs)
+            .with_ignore_dot_dirs(args.ignore_dot_dirs)?
             .with_extensions(args.ext)
             .with_exclude_dirs(args.exclude_dirs)?
             .with_marker_files(args.marker_files)
@@ -143,9 +133,7 @@ impl ArgsResult {
         })
     }
 
-    /// Returns a detailed string representation suitable for verbose output.
-    ///
-    /// Shows all fields with their values, formatted for readability.
+    /// Returns a detailed string representation for verbose output.
     pub(super) fn verbose_display(&self) -> String {
         fn join_or_wildcard<I, T>(items: I, separator: &str) -> String
         where
@@ -195,10 +183,10 @@ impl ArgsResult {
     }
 }
 
-/// Parses and validates the input path argument.
+/// Resolves and validates the input path.
 ///
-/// If a path is provided, validates it as an existing directory.
-/// If no path is provided, returns the current working directory.
+/// If a path is given, it must be an existing directory. Otherwise, the
+/// current working directory is used.
 fn parse_path(args_path: Option<PathBuf>) -> AnyhowResult<PathBuf> {
     let path = match args_path {
         Some(p) => p,

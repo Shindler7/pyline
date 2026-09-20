@@ -1,25 +1,22 @@
-//! Source line counter for Python applications.
+//! Source line counter for Python and Rust applications.
 //!
-//! Analyzes *.py files, excluding comments and whitespace lines.
-//! Produces statistical analysis of Python keyword usage.
-//!
-//! Shindler7, 2025.
+//! Analyzes source files, excluding comments and whitespace lines,
+//! and produces statistics on keyword usage.
 
 mod cli;
-mod normalize;
 mod tools;
 
 use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
 
 use pyline_libs::{
-    CodeLanguage, CollectorResult, FileData, FileDataExt,
-    collector::Collector,
+    CodeLanguage, Collector, CollectorResult, FileData, FileDataExt,
     errors::PyLineError,
     parser::{Python, Rust},
     traits::CodeParsers,
 };
 use std::{
+    io::Write,
     process::exit,
     sync::{
         Arc,
@@ -37,7 +34,7 @@ async fn main() -> AnyhowResult<()> {
     Ok(())
 }
 
-/// Main loop function.
+/// Runs the application: parses CLI args, collects files, and prints stats.
 async fn run() -> AnyhowResult<()> {
     let cli_result = ArgsResult::from_clap()?;
 
@@ -53,7 +50,6 @@ async fn run() -> AnyhowResult<()> {
 
     let files = collect_files(&cli_result.collector).await?;
 
-    // About errors and verbose.
     if files.has_errors() {
         println!(
             "\nWARNINGS! During the gathering process, {} errors occurred.",
@@ -81,7 +77,8 @@ async fn run() -> AnyhowResult<()> {
     Ok(())
 }
 
-async fn collect_files(collector: &Collector) -> Result<CollectorResult, PyLineError> {
+/// Collects files via the configured [`Collector`], showing a progress spinner.
+async fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     let running = Arc::new(AtomicBool::new(true));
     let spinner_handle = {
         let running = running.clone();
@@ -89,14 +86,16 @@ async fn collect_files(collector: &Collector) -> Result<CollectorResult, PyLineE
     };
 
     print!("\nGathering files for analysis... ");
+    std::io::stdout().flush()?;
 
-    let files = collector.complete().await?;
+    let collector_result = collector.complete().await;
 
-    // Spinner stop.
     running.store(false, Ordering::Relaxed);
-    let _ = spinner_handle.await;
+    let _ = spinner_handle.await?;
 
-    if files.has_files() {
+    let files_batch = collector_result?;
+
+    if files_batch.has_files() {
         print!("OK.");
     } else {
         print!("NO FILES.");
@@ -104,9 +103,10 @@ async fn collect_files(collector: &Collector) -> Result<CollectorResult, PyLineE
 
     println!();
 
-    Ok(files)
+    Ok(files_batch)
 }
 
+/// Parses the collected files and prints keyword statistics.
 async fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
     print!("\nGathering code stats... ");
 

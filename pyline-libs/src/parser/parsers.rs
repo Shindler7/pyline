@@ -1,14 +1,17 @@
-//! Core infrastructure for parsing and analyzing code files.
+//! Shared types for language parsers and file statistics.
 
 use crate::{define_lang_struct, display_for_lang};
 use std::fmt::{Display, Formatter};
 
+/// Supported source languages.
 #[derive(Debug, Default, Clone)]
 pub enum CodeLanguage {
-    Rust,
-
+    /// Python (default).
     #[default]
     Python,
+
+    /// Rust.
+    Rust,
 }
 
 impl Display for CodeLanguage {
@@ -20,39 +23,37 @@ impl Display for CodeLanguage {
     }
 }
 
-/// Data structure with statistics of analyzed files.
+/// Aggregate statistics over a set of analyzed files.
 #[derive(Debug, Default, Clone)]
 pub struct CodeFilesStat {
-    /// Number of analyzed files (total).
+    /// Total number of files.
     pub num_files_total: usize,
-    /// Number of unsuitable files. Invalid files include those that could not
-    /// be analyzed or those where code syntax errors were detected.
-    pub num_files_not_valid: usize,
-    /// Number of lines in files (total).
+    /// Number of files that could not be read or parsed.
+    pub num_files_invalid: usize,
+    /// Total number of lines.
     pub lines_total: usize,
-    /// Number of code lines.
+    /// Number of lines that contain code.
     pub code_lines: usize,
 }
 
 impl CodeFilesStat {
-    /// Merges another CodeFilesStat instance into this one, summing all fields.
+    /// Adds `other` into `self`.
     pub fn merge(&mut self, other: CodeFilesStat) {
         self.num_files_total += other.num_files_total;
-        self.num_files_not_valid += other.num_files_not_valid;
+        self.num_files_invalid += other.num_files_invalid;
         self.lines_total += other.lines_total;
         self.code_lines += other.code_lines;
     }
 
-    /// Alternative version that borrows the other instance.
+    /// Like [`Self::merge`], but takes `other` by reference.
     pub fn merge_ref(&mut self, other: &CodeFilesStat) {
         self.num_files_total += other.num_files_total;
-        self.num_files_not_valid += other.num_files_not_valid;
+        self.num_files_invalid += other.num_files_invalid;
         self.lines_total += other.lines_total;
         self.code_lines += other.code_lines;
     }
 
-    /// Consumes both instances and returns a new merged instance
-    /// (functional style).
+    /// Returns the sum of `self` and `other`.
     pub fn combined(self, other: CodeFilesStat) -> Self {
         let mut result = self;
         result.merge(other);
@@ -65,10 +66,10 @@ impl Display for CodeFilesStat {
         writeln!(f, "Files: {}", self.num_files_total)?;
         writeln!(f, "Lines: {}", self.lines_total)?;
         write!(f, "  of which are code lines: {}", self.code_lines)?;
-        if self.num_files_not_valid > 0 {
-            write!(f, "\nFailed to read files: {}", self.num_files_not_valid)?;
+        if self.num_files_invalid > 0 {
+            write!(f, "\nFailed to read files: {}", self.num_files_invalid)?;
         }
-        write!(f, "")
+        Ok(())
     }
 }
 
