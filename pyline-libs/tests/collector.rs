@@ -1,7 +1,5 @@
-use pyline_libs::collector::Collector;
-use pyline_libs::errors::PyLineError;
-use std::fs::File;
-use std::path::PathBuf;
+use pyline_libs::{collector::Collector, errors::PyLineError};
+use std::{fs::File, path::PathBuf};
 use tokio::fs;
 use uuid::Uuid;
 
@@ -80,7 +78,7 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root)
         .extensions(["py"])
-        .exclude_dirs(["node_modules"])
+        .exclude_dirs(["node_modules"])?
         .ignore_dot_dirs(false)
         .complete()
         .await?;
@@ -96,10 +94,11 @@ async fn test_exclude_dirs_works() -> Result<(), PyLineError> {
 }
 
 #[tokio::test]
-#[should_panic(expected = "Cannot exclude dot-directories")]
-async fn test_exclude_dot_dir_panics() {
+async fn test_exclude_dot_dir_error() {
     let root = setup_test_dir().await;
 
-    // Этот вызов должен паниковать из-за .git в exclude_dirs
-    Collector::new(&root).exclude_dirs([".git"]);
+    // Этот вызов должен возвращать ошибку из-за .git в exclude_dirs.
+    let result = Collector::new(&root).exclude_dirs([".git"]);
+
+    assert!(result.is_err());
 }

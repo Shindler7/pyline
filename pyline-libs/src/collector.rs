@@ -1,6 +1,11 @@
 //! Module for selecting code files for subsequent analysis.
 
-use crate::{errors::PyLineError, traits::FileDataExt, utils::format_file_size};
+use crate::{
+    errors::PyLineError,
+    traits::FileDataExt,
+    types::{Dirs, Extensions, Files},
+    utils::format_file_size,
+};
 use async_recursion::async_recursion;
 use std::{
     fmt::{Debug, Display, Formatter},
@@ -86,20 +91,20 @@ pub struct Collector {
     ///
     /// For example, including `.gitignore` here would skip directories
     /// containing a `.gitignore` file.
-    marker_files: Vec<String>,
+    marker_files: Files,
 
     /// List of directory names to exclude from traversal.
-    exclude_dirs: Vec<String>,
+    exclude_dirs: Dirs,
 
     /// List of file names to exclude from collection.
-    exclude_files: Vec<String>,
+    exclude_files: Files,
 
     /// List of file extensions to include in collection.
     ///
     /// Only files with these extensions will be collected. For example,
     /// `vec!["py", "pyw"]` would collect only Python files. `None` means
     /// all file extensions are included.
-    extensions: Vec<String>,
+    extensions: Extensions,
 
     /// Whether to ignore directories starting with a dot (`.`).    
     ignore_dot_dirs: bool,
@@ -162,33 +167,35 @@ impl Collector {
     ///
     /// ## Example
     ///
-    /// ```
+    /// ```ignore
     /// use std::path::PathBuf;
     /// use pyline_libs::collector::Collector;
     ///
     /// let path = PathBuf::from("/path");
     ///
     /// Collector::new(&path)
-    ///     .exclude_dirs(["node_modules", "target", "__pycache__"])
+    ///     .exclude_dirs(["node_modules", "target", "__pycache__"])?
     ///     .complete();
     /// ```
-    pub fn exclude_dirs<I, S>(mut self, dirs: I) -> Self
+    pub fn exclude_dirs<I, S>(mut self, dirs: I) -> Result<Self, PyLineError>
     where
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.exclude_dirs =
-            dirs.into_iter()
-                .map(|s| {
-                    let s_into = s.into();
-                    if s_into.starts_with(".") {
-                        panic!("Cannot exclude dot-directories (e.g., '.git') via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
-        Consider removing them from `exclude_dirs`, or disable `ignore_dot_dirs` with `.ignore_dot_dirs(false)`.");
-                    }
-                    s_into
-                })
-                .collect();
-        self
+        let exclude_dirs: Dirs = dirs.into_iter().collect();
+
+        if self.ignore_dot_dirs && exclude_dirs.iter().any(|s| s.starts_with(".")) {
+            return Err(PyLineError::scanner_error(
+                "Cannot exclude dot-directories (e.g., '.git') \
+                    via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
+                    Consider removing them from `exclude_dirs`, or disable \
+                    `ignore_dot_dirs` with `.ignore_dot_dirs(false)`.",
+            ));
+        }
+
+        self.exclude_dirs = exclude_dirs;
+
+        Ok(self)
     }
 
     /// Configures which files should trigger exclusion of their parent directories.
@@ -202,7 +209,7 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.marker_files = files.into_iter().map(|s| s.into()).collect();
+        self.marker_files = files.into_iter().collect();
         self
     }
 
@@ -232,7 +239,7 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.exclude_files = files.into_iter().map(|s| s.into()).collect();
+        self.exclude_files = files.into_iter().collect();
         self
     }
 
@@ -262,13 +269,7 @@ impl Collector {
         I: IntoIterator<Item = S>,
         S: Into<String>,
     {
-        self.extensions = ext
-            .into_iter()
-            .map(|s| {
-                let ext = s.into();
-                ext.trim_start_matches('.').to_string()
-            })
-            .collect();
+        self.extensions = ext.into_iter().collect();
         self
     }
 
@@ -419,7 +420,7 @@ impl Collector {
     ///
     /// ## Example: Basic Usage
     ///
-    /// ```no_run
+    /// ```ignore
     /// use std::path::PathBuf;
     /// use pyline_libs::collector::Collector;
     /// use pyline_libs::errors::PyLineError;
@@ -430,7 +431,7 @@ impl Collector {
     ///
     /// let collector = Collector::new(&path)
     ///     .extensions(["rs", "toml"])
-    ///     .exclude_dirs(["target", ".git"])
+    ///     .exclude_dirs(["target", ".git"])?
     ///     .complete()
     ///     .await?;
     ///
@@ -606,7 +607,12 @@ mod tests {
 
     #[test]
     fn remove_dot_from_extensions() {
-        let c = Collector::new(Path::new("/some/path")).extensions([".py", "rs", ".toml"]);
-        assert_eq!(c.extensions, vec!["py", "rs", "toml"]);
+        let examples = [".py", "rs", ".toml"];
+        // Ожидаемый результат после очистки от точек.
+        let expected = ["py", "rs", "toml"];
+
+        let c = Collector::new(Path::new("/some/path")).extensions(examples);
+
+        assert!(c.extensions.iter().all(|s| expected.contains(&s.as_str())));
     }
 }

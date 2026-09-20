@@ -1,6 +1,6 @@
 [package]
 name = "pyline"
-version = "0.4.4"
+version.workspace = true
 edition = "2024"
 license = "MIT"
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]

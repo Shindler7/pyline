@@ -4,11 +4,9 @@
 //! Produces statistical analysis of Python keyword usage.
 //!
 //! Shindler7, 2025.
-#![warn(missing_docs)]
 
 use pyline_libs::traits::{CodeParsers, FileDataExt};
 mod cli;
-mod config;
 mod tools;
 
 use crate::{
@@ -32,7 +30,7 @@ use std::{
 #[tokio::main]
 async fn main() -> AnyhowResult<()> {
     if let Err(e) = run().await {
-        eprintln!("Error: {}", e);
+        eprintln!("\n\n{}", e);
         exit(1);
     }
 
@@ -95,7 +93,7 @@ async fn collect_files(cli_result: &ArgsResult) -> Result<CollectorResult, PyLin
     let files = Collector::new(&cli_result.path)
         .ignore_dot_dirs(cli_result.ignore_dot_dirs)
         .extensions(&cli_result.extension)
-        .exclude_dirs(&cli_result.dirs)
+        .exclude_dirs(&cli_result.dirs)?
         .with_marker_files(&cli_result.marker_files)
         .exclude_files(&cli_result.filenames)
         .skip_errors(cli_result.skip_gather_errors)

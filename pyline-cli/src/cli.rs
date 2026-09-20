@@ -7,17 +7,8 @@
 //! - Converting raw arguments into structured configuration for the application
 
 use clap::{Parser, ValueEnum};
-use pyline_libs::py::base::{
-    EXCLUDE_DIRS, EXCLUDE_DOT_DIRS, EXCLUDE_FILENAMES, MARKER_FILE, VALID_EXTENSIONS,
-};
-use pyline_libs::rust::base::{
-    RUST_EXCLUDE_DIRS, RUST_EXCLUDE_DOT_DIRS, RUST_EXCLUDE_FILENAMES, RUST_MARKER_FILE,
-    RUST_VALID_EXTENSIONS,
-};
-use std::env;
-use std::fmt::Display;
-use std::path::PathBuf;
-use std::process::exit;
+use pyline_libs::{py::base as py_base, rust::base as rust_base};
+use std::{env, fmt::Display, path::PathBuf, process::exit};
 
 #[derive(Parser, Debug)]
 #[clap(about = "A high-performance CLI tool for analyzing codebases with \
@@ -70,7 +61,7 @@ struct Args {
     /// `--exclude-dirs` list. Doing so will cause the application to panic
     /// with an explanatory error. This is by design, as dot-directories are
     /// already handled separately by this flag.
-    #[clap(short, long, default_value = "true")]
+    #[clap(short, long)]
     ignore_dot_dirs: bool,
 
     /// File extensions to include in the collection. Can be specified
@@ -100,6 +91,7 @@ pub enum CodeLang {
     #[clap(name = "python", alias = "py")]
     #[default]
     Python,
+
     #[clap(name = "rust")]
     Rust,
 }
@@ -174,8 +166,11 @@ impl ArgsResult {
     /// directories.
     fn exclude_dirs_by_lang(&self) -> Vec<String> {
         let (dirs, dot_dirs) = match self.lang {
-            CodeLang::Python => (EXCLUDE_DIRS, EXCLUDE_DOT_DIRS),
-            CodeLang::Rust => (RUST_EXCLUDE_DIRS, RUST_EXCLUDE_DOT_DIRS),
+            CodeLang::Python => (py_base::EXCLUDE_DIRS, py_base::EXCLUDE_DOT_DIRS),
+            CodeLang::Rust => (
+                rust_base::RUST_EXCLUDE_DIRS,
+                rust_base::RUST_EXCLUDE_DOT_DIRS,
+            ),
         };
 
         let combined_defaults: Vec<&str> = if self.ignore_dot_dirs {
@@ -193,8 +188,8 @@ impl ArgsResult {
     /// ensuring uniqueness of items in the resulting list.
     fn exclude_marker_files_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
-            CodeLang::Python => MARKER_FILE,
-            CodeLang::Rust => RUST_MARKER_FILE,
+            CodeLang::Python => py_base::MARKER_FILE,
+            CodeLang::Rust => rust_base::RUST_MARKER_FILE,
         };
 
         Self::normalize_list(default, &self.marker_files, false)
@@ -206,8 +201,8 @@ impl ArgsResult {
     /// removing duplicates and maintaining sorted order.
     fn exclude_filenames_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
-            CodeLang::Python => EXCLUDE_FILENAMES,
-            CodeLang::Rust => RUST_EXCLUDE_FILENAMES,
+            CodeLang::Python => py_base::EXCLUDE_FILENAMES,
+            CodeLang::Rust => rust_base::RUST_EXCLUDE_FILENAMES,
         };
 
         Self::normalize_list(default, &self.filenames, false)
@@ -219,8 +214,8 @@ impl ArgsResult {
     /// ensuring uniqueness and canonical format (without leading dots).
     fn normalize_ext_by_lang(&self) -> Vec<String> {
         let default = match self.lang {
-            CodeLang::Python => VALID_EXTENSIONS,
-            CodeLang::Rust => RUST_VALID_EXTENSIONS,
+            CodeLang::Python => py_base::VALID_EXTENSIONS,
+            CodeLang::Rust => rust_base::RUST_VALID_EXTENSIONS,
         };
 
         Self::normalize_list(default, &self.extension, true)

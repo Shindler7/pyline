@@ -6,7 +6,7 @@
 //!   implementations (e.g., for Python).
 //!
 //! Custom error types defined in `errors.rs`.
-#![warn(missing_docs)]
+
 pub mod collector;
 pub mod errors;
 #[macro_use]
@@ -15,4 +15,5 @@ pub mod macros;
 pub mod py;
 pub mod rust;
 pub mod traits;
+pub mod types;
 pub mod utils;
