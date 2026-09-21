@@ -14,10 +14,10 @@ use std::path::{Path, PathBuf};
 /// Configuration for collecting and filtering files from a directory tree.
 ///
 /// Defines which files and directories are included or excluded during
-/// collection. All fields have defaults.
+/// the collection. All fields have defaults.
 #[derive(Default)]
 pub struct Collector {
-    /// Root directory path from which to start file collection.
+    /// Root directory path from which to start file of collection.
     path: PathBuf,
 
     /// Target language for parsing.
@@ -32,10 +32,10 @@ pub struct Collector {
     /// List of directory names to exclude from traversal.
     exclude_dirs: Dirs,
 
-    /// List of file names to exclude from collection.
+    /// List of file names to exclude from the collection.
     exclude_files: Files,
 
-    /// File extensions to include in collection.
+    /// File extensions to include in the collection.
     ///
     /// Only files with these extensions are collected, e.g. `["py", "pyw"]`
     /// for Python. The language's default extensions are always included.
@@ -44,11 +44,10 @@ pub struct Collector {
     /// Whether to ignore directories starting with a dot (`.`).
     ignore_dot_dirs: bool,
 
-    /// If `true`, access and read errors are ignored and collection
-    /// continues with accessible entries; otherwise, it halts on the first
-    /// error.
+    /// If `true`, access and read errors are ignored, and collection
+    /// continues with accessible entries; otherwise, it halts on the first error.
     ///
-    /// Default: `true`.
+    /// Default: `false`.
     skip_errors: bool,
 }
 
@@ -106,13 +105,13 @@ impl Collector {
             exclude_dirs,
             exclude_files,
             ignore_dot_dirs: true,
-            skip_errors: true,
+            ..Default::default()
         }
     }
 
-    /// Excludes the given directories from collection.
+    /// Excludes the given directories from the collection.
     ///
-    /// Dot-directories cannot be excluded this way. To exclude them, use
+    /// Dot directories cannot be excluded this way. To exclude them, use
     /// [`Self::with_ignore_dot_dirs`] instead.
     ///
     /// # Arguments
@@ -167,7 +166,7 @@ impl Collector {
     /// Sets marker files that exclude their parent directory.
     ///
     /// If a directory contains any of these files, the directory and all its
-    /// subdirectories are skipped during collection. Useful for ignoring
+    /// subdirectories are skipped during the collection. Useful for ignoring
     /// directories marked by `.gitignore`, `.noscan`, and similar files.
     pub fn with_marker_files<I, S>(mut self, files: I) -> Self
     where
@@ -208,7 +207,7 @@ impl Collector {
         self
     }
 
-    /// Adds file extensions to include in collection.
+    /// Adds file extensions to include in the collection.
     ///
     /// Leading dots are stripped: `"py"` and `".py"` are equivalent.
     ///
@@ -239,7 +238,7 @@ impl Collector {
 
     /// Sets whether dot-directories are ignored.
     ///
-    /// Dot-directories (`.git`, `.venv`, `.idea`) usually contain
+    /// Dot directories (`.git`, `.venv`, `.idea`) usually contain
     /// configuration or cache files rather than source code.
     ///
     /// # Arguments
@@ -273,8 +272,8 @@ impl Collector {
 
     /// Sets whether access and read errors are skipped.
     ///
-    /// When `true` (default), collection continues with accessible entries;
-    /// when `false`, it halts on the first error.
+    /// When `true`, the collection continues with accessible entries;
+    /// when `false` (default), it halts on the first error.
     pub fn with_skip_errors(mut self, skip: bool) -> Self {
         self.skip_errors = skip;
         self
@@ -282,7 +281,7 @@ impl Collector {
 }
 
 impl Collector {
-    /// Returns the root directory path from which file collection starts.
+    /// Returns the root directory path from which file the collection starts.
     pub fn path(&self) -> &Path {
         &self.path
     }
@@ -302,12 +301,12 @@ impl Collector {
         &self.exclude_dirs
     }
 
-    /// Returns the file names excluded from collection.
+    /// Returns the file names excluded from the collection.
     pub fn exclude_files(&self) -> &Files {
         &self.exclude_files
     }
 
-    /// Returns the file extensions included in collection.
+    /// Returns the file extensions included in the collection.
     pub fn extensions(&self) -> &Extensions {
         &self.extensions
     }

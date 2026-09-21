@@ -182,34 +182,6 @@ Each crate in the workspace is versioned independently:
 Initial release under the new versioning scheme, following a full refactoring
 of both crates. The pre-reset history is summarized below for reference.
 
-<details>
-<summary>Pre-reset history (0.2.0 – 0.4.4)</summary>
-
-**CLI & general**
-
-- Added real-time progress visualization during file discovery
-- Added configurable error handling with the `-E` / `--gather-errors` flag (replacing
-  the old `--skip-gather-errors` / `-s`); by default errors are
-  silently skipped, with the flag they are collected and reported
-- Added CLI flags: `--ignore-dot-dirs`, `--auto-config`, `--marker-files`;
-  renamed several existing flags for clarity
-- Added directory exclusion when marker files are detected
-- Added automatic file collection configuration via `--auto-config`
-- Added a comprehensive test suite
-- Improved file collection performance; verbose mode support
-- Minor fixes to console output and documentation
-
-**Libs & parsing**
-
-- Added support for parsing Rust files
-- Unified parsing methods (including macro creation) for easier expansion to
-  new languages
-- Clarified handling of intermediate symbols (commas, parentheses) that are
-  ignored and reset the accumulated keyword buffer
-- Fixed a Linux-compatibility bug introduced during refactoring
-
-</details>
-
 ## License
 
 This project is licensed under the MIT License.

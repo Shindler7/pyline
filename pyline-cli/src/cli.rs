@@ -66,9 +66,9 @@ struct Args {
     #[clap(short = 'X', long, value_name = "FILENAMES", value_delimiter = ',', num_args = 1..)]
     exclude_files: Vec<String>,
 
-    /// Collect access/read errors instead of silently skipping them.
-    #[clap(short = 'E', long = "gather-errors", default_value = "false")]
-    no_skip_gather_errors: bool,
+    /// Silently skip access/read errors instead of collecting them.
+    #[clap(short = 'E', long = "skip-errors")]
+    skip_errors: bool,
 
     /// Enable verbose output.
     #[clap(short, long)]
@@ -125,7 +125,7 @@ impl ArgsResult {
             .with_exclude_dirs(args.exclude_dirs)?
             .with_marker_files(args.marker_files)
             .with_exclude_files(args.exclude_files)
-            .with_skip_errors(!args.no_skip_gather_errors);
+            .with_skip_errors(args.skip_errors);
 
         Ok(ArgsResult {
             collector,
