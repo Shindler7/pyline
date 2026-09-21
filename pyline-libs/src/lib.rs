@@ -9,13 +9,9 @@
 
 pub mod collector;
 pub mod errors;
-pub mod macros;
 pub mod parser;
-pub mod py;
-pub mod rust;
-pub mod traits;
 pub mod utils;
 
 pub use collector::{Collector, CollectorResult, models::FileData};
 pub use parser::{CodeFilesStat, CodeLanguage};
-pub use traits::CodeParsers;
+pub use parser::traits::CodeParsers;

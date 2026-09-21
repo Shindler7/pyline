@@ -5,10 +5,10 @@ use crate::{
     errors::PyLineError,
     impl_lang_parser,
     parser::Rust,
-    rust::base::{RUST_KEYWORDS, RustKeywords},
-    traits::CodeParsers,
 };
 
+use crate::parser::rust::base::{RUST_KEYWORDS, RustKeywords};
+use crate::parser::traits::CodeParsers;
 use std::collections::HashMap;
 use tokio::{
     fs::File,

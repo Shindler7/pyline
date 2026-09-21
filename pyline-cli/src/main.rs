@@ -9,12 +9,12 @@ mod tools;
 use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
 
+use pyline_libs::parser::traits::CodeParsers;
 use pyline_libs::{
     CodeLanguage, Collector, CollectorResult, FileData,
     collector::FileDataExt,
     errors::PyLineError,
     parser::{Python, Rust},
-    traits::CodeParsers,
 };
 use std::{
     io::Write,

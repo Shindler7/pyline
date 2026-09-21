@@ -5,12 +5,12 @@ use crate::{
     errors::PyLineError,
     impl_lang_parser,
     parser::Python,
-    py::base::{KEYWORDS, PyKeywords},
-    traits::CodeParsers,
 };
 
 use std::collections::HashMap;
 
+use crate::parser::py::base::{KEYWORDS, PyKeywords};
+use crate::parser::traits::CodeParsers;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, BufReader},
