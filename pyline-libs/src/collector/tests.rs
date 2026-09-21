@@ -11,10 +11,11 @@ fn file_data_display_format() {
 
 #[test]
 fn verbose_display_contains_filename_and_size() {
-    let file = FileData::new(PathBuf::from("test.py"), 1024);
+    let file = FileData::new(PathBuf::from("test.py"), 2048);
     let v = file.verbose_display();
+    println!("{v:?}");
     assert!(v.contains("File:"));
-    assert!(v.contains("1024"));
+    assert!(v.contains("2.0 KB"));
 }
 
 #[test]
