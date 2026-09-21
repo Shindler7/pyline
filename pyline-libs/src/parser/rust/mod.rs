@@ -1,7 +1,7 @@
 //! Core parsing engine and language-specific implementations for Rust.
 //!
 //! This module provides the fundamental building blocks for code analysis:
-//! - `base` — Basic data structures, enums, and constants shared across all parsers
+//! - `base` — Basic data structures, enums, and constants shared across all parser
 //! - `engine` — Core parsing algorithms and state machines (language-independent
 //!   logic)
 //!

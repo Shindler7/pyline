@@ -4,13 +4,14 @@ use crate::{
     FileData,
     errors::PyLineError,
     impl_lang_parser,
-    parser::Python,
+    parser::{
+        CodeParsers, Python,
+        py::base::{KEYWORDS, PyKeywords},
+    },
 };
 
 use std::collections::HashMap;
 
-use crate::parser::py::base::{KEYWORDS, PyKeywords};
-use crate::parser::traits::CodeParsers;
 use tokio::{
     fs::File,
     io::{AsyncBufReadExt, BufReader},

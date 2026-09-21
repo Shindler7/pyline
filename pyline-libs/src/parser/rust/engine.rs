@@ -4,11 +4,12 @@ use crate::{
     collector::models::FileData,
     errors::PyLineError,
     impl_lang_parser,
-    parser::Rust,
+    parser::{
+        rust::base::{RUST_KEYWORDS, RustKeywords},
+        {CodeParsers, Rust},
+    },
 };
 
-use crate::parser::rust::base::{RUST_KEYWORDS, RustKeywords};
-use crate::parser::traits::CodeParsers;
 use std::collections::HashMap;
 use tokio::{
     fs::File,

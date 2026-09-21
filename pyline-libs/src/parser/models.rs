@@ -1,4 +1,4 @@
-//! Shared types for language parsers and file statistics.
+//! Shared types for language parser and file statistics.
 
 use crate::{define_lang_struct, display_for_lang};
 use std::fmt::{Display, Formatter};

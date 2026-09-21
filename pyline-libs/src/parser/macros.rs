@@ -158,16 +158,15 @@ macro_rules! impl_lang_parser {
         }
 
         impl $Lang {
-            /// Asynchronously parses a single Python file and extracts code
-            /// statistics.
+            /// Asynchronously parses a single code file and extracts statistics.
             ///
-            /// Opens the file, reads it line by line, and analyzes Python code
-            /// patterns.
+            /// Opens the file, reads it line by line, and analyzes code patterns.
             async fn parse_file(file: &FileData) -> Result<Self, $crate::errors::PyLineError> {
                 let mut code_stats = Self::new_one();
 
                 let code_file = tokio::fs::File::open(&file.path()).await?;
                 let cursor = tokio::io::BufReader::new(code_file);
+
                 Self::parse_code_lines(cursor, &mut code_stats).await?;
 
                 Ok(code_stats)
