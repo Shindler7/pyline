@@ -96,7 +96,7 @@ macro_rules! impl_lang_parser {
     (
         $Lang:ident
     ) => {
-        impl crate::CodeParsers for $Lang {
+        impl $crate::CodeParsers for $Lang {
             type Code = $Lang;
 
             fn new_one() -> Self {
