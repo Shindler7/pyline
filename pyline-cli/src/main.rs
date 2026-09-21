@@ -73,7 +73,7 @@ async fn run() -> AnyhowResult<()> {
         println!("\n{}", collection.files().join_verbose(""));
     }
 
-    analyze_files(&cli_result, collection.files()).await?;
+    analyze_files(&cli_result, collection.files())?;
 
     Ok(())
 }
@@ -108,20 +108,20 @@ async fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
 }
 
 /// Parses the collected files and prints keyword statistics.
-async fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
+fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
     print!("\nGathering code stats... ");
 
     match cli_result.collector.lang() {
         CodeLanguage::Python => {
             let mut python_stats = Python::new();
-            python_stats.parse(files).await?;
+            python_stats.parse(files)?;
 
             print!("OK.");
             println!("\n{}\n", python_stats);
         }
         CodeLanguage::Rust => {
             let mut rust_stats = Rust::new();
-            rust_stats.parse(files).await?;
+            rust_stats.parse(files)?;
 
             print!("OK.");
             println!("\n{}\n", rust_stats);

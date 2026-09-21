@@ -1,20 +1,19 @@
 //! Python line-by-line parsing logic.
 
 use crate::{
-    FileData,
+    CodeFilesStat,
     errors::PyLineError,
     impl_lang_parser,
     parser::{
-        CodeParsers, Python,
+        Python,
         py::base::{KEYWORDS, PyKeywords},
     },
 };
 
-use std::collections::HashMap;
-
-use tokio::{
+use std::{
+    collections::HashMap,
     fs::File,
-    io::{AsyncBufReadExt, BufReader},
+    io::{BufRead, BufReader},
 };
 
 impl_lang_parser!(Python);
@@ -37,32 +36,34 @@ impl Python {
     /// # Errors
     ///
     /// Returns [`PyLineError`] if reading from the file fails.
-    async fn parse_code_lines(
-        mut reader: BufReader<File>,
-        stats: &mut Python,
-    ) -> Result<(), PyLineError> {
+    fn parse_code_lines(mut reader: BufReader<File>) -> Result<Self, PyLineError> {
+        let mut lines_totals = 0;
+        let mut code_lines = 0;
+
         let mut triple_quotes: Option<char> = None;
         let mut buf = String::new();
 
-        while reader.read_line(&mut buf).await? > 0 {
-            stats.count_line();
+        let mut final_keywords: HashMap<String, usize> = HashMap::new();
+
+        while reader.read_line(&mut buf)? > 0 {
+            lines_totals += 1;
 
             let line = buf.trim_end_matches(['\r', '\n']);
             let parsed = Self::parse_line(line, triple_quotes);
             triple_quotes = parsed.triple_quotes;
 
             if parsed.is_code {
-                stats.count_code_line();
+                code_lines += 1;
 
                 for (k, v) in parsed.keywords {
-                    *stats.keywords.entry(k.to_string()).or_insert(0) += v;
+                    *final_keywords.entry(k.to_string()).or_insert(0) += v;
                 }
             }
 
             buf.clear();
         }
 
-        Ok(())
+        Ok(Self::from_parse(lines_totals, code_lines, final_keywords))
     }
 
     /// Parses a single line, tracking triple-quote state across lines.

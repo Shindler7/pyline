@@ -1,6 +1,6 @@
 //! Shared types for language parser and file statistics.
 
-use crate::{define_lang_struct, display_for_lang};
+use crate::define_lang_struct;
 use std::fmt::{Display, Formatter};
 
 /// Supported source languages.

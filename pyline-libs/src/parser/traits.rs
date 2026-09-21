@@ -16,32 +16,15 @@ pub trait CodeParsers {
         Default::default()
     }
 
-    /// Like [`Self::new`], but also increments the file counter.
-    fn new_one() -> Self::Code;
-
-    /// Merges `other` into `self`.
-    fn merge(&mut self, other: Self::Code);
-
-    /// Like [`Self::merge`], but takes `other` by reference.
-    fn merge_ref(&mut self, other: &Self::Code);
-
     /// Parses the given files, updating the accumulated statistics.
     ///
     /// # Errors
     ///
     /// Returns [`PyLineError`] if parsing fails and errors are not skipped.
-    fn parse(&mut self, files: &[FileData])
-    -> impl Future<Output = Result<(), PyLineError>> + Send;
+    fn parse(&mut self, files: &[FileData]) -> Result<(), PyLineError>;
 
-    /// Increments the total file counter.
-    fn count_file(&mut self);
+    fn parse_file(file: &FileData) -> Result<Self::Code, PyLineError>;
 
-    /// Increments the invalid file counter.
-    fn count_invalid_file(&mut self);
-
-    /// Increments the total line counter.
-    fn count_line(&mut self);
-
-    /// Increments the total line counter.
-    fn count_code_line(&mut self);
+    /// Merges `other` into `self`.
+    fn merge(&mut self, other: Self::Code);
 }

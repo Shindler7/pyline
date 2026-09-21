@@ -7,6 +7,10 @@
 //!
 //! Language-specific logic (`parse_code_lines`, `is_code_line`,
 //! `extract_keywords`) must be implemented manually.
+//!
+//! - [`define_lang_struct!`] — defines the parser struct;
+//! - [`display_for_lang!`] — implements [`std::fmt::Display`];
+//! - [`impl_lang_parser!`] — implements [`crate::CodeParsers`].
 
 /// Implements [`std::fmt::Display`] for a language statistics struct.
 ///
@@ -32,14 +36,14 @@ macro_rules! display_for_lang {
     ($instance: ident) => {
         impl std::fmt::Display for $instance {
             fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-                write!(f, "{}", self.stats)?;
+                std::write!(f, "{}", self.stats)?;
                 if !self.keywords.is_empty() {
-                    write!(f, "\n\nKeywords:")?;
+                    std::write!(f, "\n\nKeywords:")?;
 
                     let mut sorted_keywords: Vec<_> = self.keywords.iter().collect();
                     sorted_keywords.sort_by(|a, b| b.1.cmp(a.1));
                     for (keyword, count) in sorted_keywords {
-                        write!(f, "\n  {} = {}", keyword, count)?;
+                        std::write!(f, "\n  {} = {}", keyword, count)?;
                     }
                 }
 
@@ -69,20 +73,20 @@ macro_rules! define_lang_struct {
         #[derive(Debug, Default, Clone)]
         pub struct $name {
             /// File statistics (lines, files, code lines).
-            pub stats: CodeFilesStat,
+            pub stats: $crate::CodeFilesStat,
             /// Keyword frequency counts.
             pub keywords: std::collections::HashMap<String, usize>,
         }
 
-        display_for_lang!($name);
+        $crate::display_for_lang!($name);
     };
 }
 
 /// Implements [`crate::CodeParsers`] for a language type.
 ///
-/// The type must derive `Default` and `Clone` and provide an async
-/// `parse_code_lines` method with the signature
-/// `async fn(BufReader<File>, &mut Self) -> Result<(), PyLineError>`.
+/// The type must implement `Default` and provide a method
+/// `fn parse_code_lines(BufReader<File>) -> Result<Self, PyLineError>`.
+///
 /// The [`crate::CodeParsers`] trait must be in scope at the call site.
 ///
 /// # Examples
@@ -99,12 +103,6 @@ macro_rules! impl_lang_parser {
         impl $crate::CodeParsers for $Lang {
             type Code = $Lang;
 
-            fn new_one() -> Self {
-                let mut code_stat = Self::default();
-                code_stat.count_file();
-                code_stat
-            }
-
             fn merge(&mut self, other: Self) {
                 self.stats.merge(other.stats);
                 for (keyword, count) in other.keywords {
@@ -112,64 +110,75 @@ macro_rules! impl_lang_parser {
                 }
             }
 
-            fn merge_ref(&mut self, other: &Self) {
-                self.stats.merge_ref(&other.stats);
-                for (keyword, count) in &other.keywords {
-                    *self.keywords.entry(keyword.clone()).or_insert(0) += count;
-                }
-            }
-
-            async fn parse(
+            fn parse(
                 &mut self,
-                files: &[FileData],
+                files: &[$crate::FileData],
             ) -> Result<(), $crate::errors::PyLineError> {
+                use rayon::prelude::*;
+
                 if files.is_empty() {
                     return Err($crate::errors::PyLineError::NoFilesForParse);
                 }
 
-                let tasks: Vec<_> = files.iter().map(Self::parse_file).collect();
-                let results = futures::future::join_all(tasks).await;
+                let final_stats = files
+                    .par_iter()
+                    .fold(
+                        || Self::new(),
+                        |mut acc, file| {
+                            match Self::parse_file(file) {
+                                Ok(file_stats) => {
+                                    acc.merge(file_stats);
+                                }
+                                Err(_) => {
+                                    acc.stats.num_files_invalid += 1;
+                                    acc.stats.num_files_total += 1;
+                                }
+                            }
 
-                for result in results {
-                    match result {
-                        Ok(result) => self.merge(result),
-                        Err(_) => self.count_invalid_file(),
-                    }
-                }
+                            acc
+                        },
+                    )
+                    .reduce(
+                        || Self::new(),
+                        |mut thread_acc_a, thread_acc_b| {
+                            thread_acc_a.merge(thread_acc_b);
+                            thread_acc_a
+                        },
+                    );
+
+                self.merge(final_stats);
 
                 Ok(())
             }
 
-            fn count_file(&mut self) {
-                self.stats.num_files_total += 1;
-            }
+            /// Asynchronously parses a single code file and extracts statistics.
+            ///
+            /// Opens the file, reads it line by line, and analyzes code patterns.
+            fn parse_file(file: &$crate::FileData) -> Result<Self, $crate::errors::PyLineError> {
+                let file = std::fs::File::open(file.path())?;
+                let cursor = std::io::BufReader::new(file);
 
-            fn count_invalid_file(&mut self) {
-                self.stats.num_files_invalid += 1;
-            }
+                let code_stats = Self::parse_code_lines(cursor)?;
 
-            fn count_line(&mut self) {
-                self.stats.lines_total += 1;
-            }
-
-            fn count_code_line(&mut self) {
-                self.stats.code_lines += 1;
+                Ok(code_stats)
             }
         }
 
         impl $Lang {
-            /// Asynchronously parses a single code file and extracts statistics.
-            ///
-            /// Opens the file, reads it line by line, and analyzes code patterns.
-            async fn parse_file(file: &FileData) -> Result<Self, $crate::errors::PyLineError> {
-                let mut code_stats = Self::new_one();
-
-                let code_file = tokio::fs::File::open(&file.path()).await?;
-                let cursor = tokio::io::BufReader::new(code_file);
-
-                Self::parse_code_lines(cursor, &mut code_stats).await?;
-
-                Ok(code_stats)
+            pub(crate) fn from_parse(
+                lines_total: usize,
+                code_lines: usize,
+                keywords: std::collections::HashMap<String, usize>,
+            ) -> Self {
+                Self {
+                    stats: CodeFilesStat {
+                        lines_total,
+                        code_lines,
+                        num_files_total: 1,
+                        num_files_invalid: 0,
+                    },
+                    keywords,
+                }
             }
         }
     };

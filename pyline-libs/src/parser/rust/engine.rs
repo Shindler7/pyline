@@ -1,61 +1,59 @@
 //! Rust line-by-line parsing logic.
 
 use crate::{
-    collector::models::FileData,
+    CodeFilesStat,
     errors::PyLineError,
     impl_lang_parser,
     parser::{
+        Rust,
         rust::base::{RUST_KEYWORDS, RustKeywords},
-        {CodeParsers, Rust},
     },
 };
 
-use std::collections::HashMap;
-use tokio::{
-    fs::File,
-    io::{AsyncBufReadExt, BufReader},
-};
+use std::io::BufRead;
+use std::{collections::HashMap, fs::File, io::BufReader};
 
 impl_lang_parser!(Rust);
 
 impl Rust {
-    /// Reads `cursor` line by line, updating `stats`.
+    /// Reads `cursor` line by line.
     ///
     /// Skips comments and strings, and counts Rust keywords.
     ///
     /// # Errors
     ///
     /// Returns [`PyLineError`] if reading from the file fails.
-    pub async fn parse_code_lines(
-        mut cursor: BufReader<File>,
-        stats: &mut Rust,
-    ) -> Result<(), PyLineError> {
+    pub(crate) fn parse_code_lines(mut cursor: BufReader<File>) -> Result<Self, PyLineError> {
+        let mut lines_totals = 0;
+        let mut code_lines = 0;
         let mut in_block_comment = false;
-        let mut line = String::new();
 
         let mut local_keywords: HashMap<RustKeywords, usize> = HashMap::new();
 
+        let mut line = String::new();
+
         loop {
             line.clear();
-            let bytes_read = cursor.read_line(&mut line).await?;
+            let bytes_read = cursor.read_line(&mut line)?;
             if bytes_read == 0 {
                 break; // EOF.
             }
 
-            stats.count_line();
+            lines_totals += 1;
 
             let has_code = Self::process_line(&line, &mut in_block_comment, &mut local_keywords);
-
             if has_code {
-                stats.count_code_line();
+                code_lines += 1;
             }
         }
 
+        let mut final_keywords: HashMap<String, usize> =
+            HashMap::with_capacity(local_keywords.len());
         for (k, v) in local_keywords {
-            *stats.keywords.entry(k.to_string()).or_insert(0) += v;
+            final_keywords.insert(k.to_string(), v);
         }
 
-        Ok(())
+        Ok(Self::from_parse(lines_totals, code_lines, final_keywords))
     }
 
     /// Processes a single line, updating comment state and keyword counts.
