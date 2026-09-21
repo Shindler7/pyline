@@ -16,6 +16,6 @@ pub mod rust;
 pub mod traits;
 pub mod utils;
 
-pub use collector::{Collector, CollectorResult, FileDataExt, models::FileData};
+pub use collector::{Collector, CollectorResult, models::FileData};
 pub use parser::{CodeFilesStat, CodeLanguage};
 pub use traits::CodeParsers;

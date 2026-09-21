@@ -10,7 +10,8 @@ use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
 
 use pyline_libs::{
-    CodeLanguage, Collector, CollectorResult, FileData, FileDataExt,
+    CodeLanguage, Collector, CollectorResult, FileData,
+    collector::FileDataExt,
     errors::PyLineError,
     parser::{Python, Rust},
     traits::CodeParsers,
@@ -48,31 +49,31 @@ async fn run() -> AnyhowResult<()> {
         println!("\n{}", cli_result.verbose_display());
     }
 
-    let files = collect_files(&cli_result.collector).await?;
+    let collection = collect_files(&cli_result.collector).await?;
 
-    if files.has_errors() {
+    if collection.has_errors() {
         println!(
             "\nWARNINGS! During the gathering process, {} errors occurred.",
-            files.num_errors()
+            collection.num_errors()
         );
         if cli_result.verbose {
-            for err in files.errors() {
+            for err in collection.errors() {
                 eprintln!("\n{}", err);
             }
         }
     }
 
-    if !files.has_files() {
+    if !collection.has_files() {
         return Ok(());
     }
 
-    println!(" Successfully gathered {} files.", files.num_files());
+    println!(" Successfully gathered {} files.", collection.num_files());
 
     if cli_result.verbose {
-        println!("\n{}", files.files().join_verbose(""));
+        println!("\n{}", collection.files().join_verbose(""));
     }
 
-    analyze_files(&cli_result, files.files()).await?;
+    analyze_files(&cli_result, collection.files()).await?;
 
     Ok(())
 }

@@ -19,17 +19,13 @@ pub struct CollectorResult {
 }
 
 impl CollectorResult {
-    /// Create instance with empty fields.
-    pub fn new() -> Self {
-        Self::default()
-    }
-
+    /// Builds a result from collected files and errors.
     pub fn from_collector(result: CollectedFiles, errors: CollectedErrors) -> Self {
         Self { result, errors }
     }
 
     /// Returns a reference to the collected files.
-    pub fn files(&self) -> &Vec<FileData> {
+    pub fn files(&self) -> &[FileData] {
         self.result.inner()
     }
 
@@ -44,7 +40,7 @@ impl CollectorResult {
     }
 
     /// Returns a reference to the error list.
-    pub fn errors(&self) -> &Vec<PyLineError> {
+    pub fn errors(&self) -> &[PyLineError] {
         self.errors.inner()
     }
 
@@ -56,10 +52,5 @@ impl CollectorResult {
     /// Returns the number of errors encountered.
     pub fn num_errors(&self) -> usize {
         self.errors.len()
-    }
-
-    /// Adds a successfully collected file to the result.
-    pub fn add_file(&mut self, item: FileData) {
-        self.result.push(item);
     }
 }

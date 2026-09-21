@@ -137,7 +137,7 @@ lang_defaults!(Files);
 lang_defaults!(Dirs);
 lang_defaults!(Extensions);
 
-/// Defines a newtype wrapper around `Vec<T>` with basic collection
+/// Defines a new type wrapper around `Vec<T>` with basic collection
 /// helpers.
 ///
 /// # Parameters

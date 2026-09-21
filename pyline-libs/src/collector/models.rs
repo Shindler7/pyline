@@ -1,9 +1,9 @@
 //! File metadata types shared between the collector and the parser.
 
-use crate::{FileDataExt, utils::format_file_size};
+use crate::utils::format_file_size;
 use std::{
     fmt::{Display, Formatter},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// Metadata for a source file: its path and size.
@@ -11,7 +11,7 @@ use std::{
 /// Passed from the collector to the parser, and used for verbose output.
 #[derive(Debug, Default)]
 pub struct FileData {
-    /// Returns a reference to full path of the source file.
+    /// Path to the source file.
     path: PathBuf,
 
     /// File size in bytes.
@@ -37,15 +37,14 @@ impl FileData {
     /// ```
     pub fn verbose_display(&self) -> String {
         format!(
-            "File: {}\n  size: {} bytes ({})\n",
+            "File: {}\n  size: {}\n",
             self.path.display(),
-            self.bytes,
             format_file_size(self.bytes)
         )
     }
 
-    /// Full path to the source file.
-    pub fn path(&self) -> &PathBuf {
+    /// Returns the path to the source file.
+    pub fn path(&self) -> &Path {
         &self.path
     }
 
@@ -59,17 +58,17 @@ impl Display for FileData {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(
             f,
-            "FileAnalysis ({} ({}))",
+            "{} ({})",
             self.path.display(),
             format_file_size(self.bytes)
         )
     }
 }
 
-impl FileDataExt for Vec<FileData> {
+impl crate::collector::FileDataExt for &[FileData] {
     fn join_verbose(&self, sep: &str) -> String {
         self.iter()
-            .map(|f| f.verbose_display())
+            .map(FileData::verbose_display)
             .collect::<Vec<_>>()
             .join(sep)
     }
