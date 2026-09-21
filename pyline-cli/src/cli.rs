@@ -1,9 +1,10 @@
 //! Command-line argument parsing and validation.
 //!
 //! Responsibilities:
-//! - parse CLI arguments with `clap`;
-//! - validate input paths and directories;
-//! - convert raw arguments into the application's [`Collector`] configuration.
+//!
+//! - Parse CLI arguments with `clap`.
+//! - Validate input paths and directories.
+//! - Convert raw arguments into the application's [`Collector`] configuration.
 
 use anyhow::{Context, Result as AnyhowResult, bail};
 use clap::{Parser, ValueEnum};
@@ -32,8 +33,8 @@ struct Args {
     #[clap(short, long, value_name = "PATH")]
     path: Option<PathBuf>,
 
-    /// Directories to exclude from collection.
-    #[clap[short='x', long, value_name = "DIRECTORIES"]]
+    /// Directories to exclude from the collection.
+    #[clap[short='x', long, value_name = "DIRECTORIES", value_delimiter = ',', num_args = 1..]]
     exclude_dirs: Vec<String>,
 
     /// Marker files that cause their parent directories to be excluded
@@ -42,28 +43,27 @@ struct Args {
     /// When a directory contains any of the specified marker files, the
     /// directory and all its subdirectories are skipped. Useful for excluding
     /// directories based on configuration or metadata files.
-    #[clap[short, long, value_name = "MARKER_FILE"]]
+    #[clap[short, long, value_name = "MARKER_FILE", value_delimiter = ',', num_args = 1..]]
     marker_files: Vec<String>,
 
     /// Ignore directories whose names start with a dot (e.g., `.git`, `.venv`).
     ///
-    /// When enabled, such directories are excluded from collection
+    /// When enabled, such directories are excluded from the collection
     /// automatically. They must not be listed in `--exclude-dirs` — this
     /// is rejected with an error, since dot-directories are already handled
     /// by this flag.
     #[clap(short, long)]
     ignore_dot_dirs: bool,
 
-    /// File extensions to include in collection. Can be specified multiple
-    /// times.
+    /// File extensions to include in the collection. Can be specified multiple times.
     ///
     /// The language's basic extensions (e.g., `.py` for Python) are always
     /// included alongside any explicitly provided ones.
-    #[clap(short, long, value_name = "EXTENSION")]
+    #[clap(short, long, value_name = "EXTENSION", value_delimiter = ',', num_args = 1..)]
     ext: Vec<String>,
 
-    /// Files to exclude from collection.
-    #[clap(short = 'X', long, value_name = "FILENAMES")]
+    /// Files to exclude from the collection.
+    #[clap(short = 'X', long, value_name = "FILENAMES", value_delimiter = ',', num_args = 1..)]
     exclude_files: Vec<String>,
 
     /// Collect access/read errors instead of silently skipping them.
