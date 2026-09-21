@@ -1,71 +1,41 @@
 //! Error types for `pyline-libs`.
 
-use std::error::Error;
-use std::fmt::{Display, Formatter};
 use std::io::Error as IoError;
+use thiserror::Error as ThisError;
+use tokio::sync::mpsc::error::SendError;
 
 /// Errors that can occur during file scanning, parsing, and analysis.
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum PyLineError {
     /// An I/O error from the standard library.
-    IOError {
-        /// The underlying error.
-        error: IoError,
-        /// String representation of the error.
-        description: String,
-    },
+    #[error("{0}")]
+    IOError(#[from] IoError),
 
     /// An error during file collection.
+    #[error("{description}")]
     ScannerError {
         /// Human-readable description.
         description: String,
     },
 
     /// An error during source parsing.
+    #[error("{description}")]
     CounterError {
         /// Human-readable description.
         description: String,
     },
 
     /// No files were found to parse.
+    #[error("No files were found to parse.")]
     NoFilesForParse,
+
+    #[error("{0}")]
+    RuntimeError(String),
 }
 
-impl From<IoError> for PyLineError {
-    fn from(error: IoError) -> Self {
-        let err_msg = error.to_string();
-        PyLineError::IOError {
-            error,
-            description: err_msg,
-        }
-    }
-}
-
-impl Error for PyLineError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            Self::IOError { error, .. } => Some(error),
-            _ => None,
-        }
-    }
-}
-
-impl Display for PyLineError {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::IOError { error, description } => {
-                write!(f, "IO error: {}\n{}", error, description)
-            }
-            Self::ScannerError { description } => {
-                write!(f, "ScannerError: {}", description)
-            }
-            Self::CounterError { description } => {
-                write!(f, "CounterError: {}", description)
-            }
-            Self::NoFilesForParse => {
-                write!(f, "No files available for code parsing.")
-            }
-        }
+impl<T> From<SendError<T>> for PyLineError {
+    fn from(err: SendError<T>) -> Self {
+        Self::RuntimeError(err.to_string())
     }
 }
 
