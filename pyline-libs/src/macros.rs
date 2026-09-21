@@ -2,13 +2,13 @@
 //!
 //! Reduces boilerplate when adding a new language by generating:
 //! - the parser struct with statistics and keyword tracking;
-//! - the [`CodeParsers`] trait implementation;
-//! - the [`Display`] implementation for statistics.
+//! - the [`crate::CodeParsers`] trait implementation;
+//! - the [`std::fmt::Display`] implementation for statistics.
 //!
 //! Language-specific logic (`parse_code_lines`, `is_code_line`,
 //! `extract_keywords`) must be implemented manually.
 
-/// Implements [`Display`] for a language statistics struct.
+/// Implements [`std::fmt::Display`] for a language statistics struct.
 ///
 /// The output contains the base statistics followed by keyword
 /// frequencies sorted in descending order.
@@ -51,8 +51,7 @@ macro_rules! display_for_lang {
 
 /// Defines a language statistics struct with keyword tracking.
 ///
-/// The generated struct implements [`Display`] via
-/// [`display_for_lang!`].
+/// The generated struct implements [`std::fmt::Display`] via [`display_for_lang!`].
 ///
 /// # Examples
 ///
@@ -66,7 +65,6 @@ macro_rules! display_for_lang {
 #[macro_export]
 macro_rules! define_lang_struct {
     ($name:ident) => {
-
         #[doc = concat!("Statistics for the `", stringify!($name), "` parser.")]
         #[derive(Debug, Default, Clone)]
         pub struct $name {
@@ -80,12 +78,12 @@ macro_rules! define_lang_struct {
     };
 }
 
-/// Implements [`CodeParsers`] for a language type.
+/// Implements [`crate::CodeParsers`] for a language type.
 ///
 /// The type must derive `Default` and `Clone` and provide an async
 /// `parse_code_lines` method with the signature
 /// `async fn(BufReader<File>, &mut Self) -> Result<(), PyLineError>`.
-/// The [`CodeParsers`] trait must be in scope at the call site.
+/// The [`crate::CodeParsers`] trait must be in scope at the call site.
 ///
 /// # Examples
 ///
@@ -98,7 +96,7 @@ macro_rules! impl_lang_parser {
     (
         $Lang:ident
     ) => {
-        impl CodeParsers for $Lang {
+        impl crate::CodeParsers for $Lang {
             type Code = $Lang;
 
             fn new_one() -> Self {

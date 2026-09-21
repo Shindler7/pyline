@@ -2,8 +2,8 @@
 //!
 //! The crate provides two main parts:
 //! - [`collector`] — gathers paths to files matching a set of filters;
-//! - [`parsers`] — a [`CodeParsers`](traits::CodeParsers) trait with
-//!   language-specific implementations (Python, Rust).
+//! - [`parser`] — a [`CodeParsers`] trait with language-specific implementations
+//!   (Python, Rust).
 //!
 //! Custom error types live in [`errors`].
 
@@ -16,6 +16,6 @@ pub mod rust;
 pub mod traits;
 pub mod utils;
 
-pub use collector::models::FileData;
-pub use collector::{Collector, CollectorResult, FileDataExt};
+pub use collector::{Collector, CollectorResult, FileDataExt, models::FileData};
 pub use parser::{CodeFilesStat, CodeLanguage};
+pub use traits::CodeParsers;
