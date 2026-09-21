@@ -140,6 +140,20 @@ Keywords:
 **Note**: In the second example, the number of files may be lower if
 directories containing main.py are excluded from scanning.
 
+## Documentation
+
+API documentation for both crates can be built locally:
+
+```shell
+cargo doc --no-deps
+```
+
+The generated HTML is placed in `target/doc/`. To open it in your browser:
+
+```shell
+cargo doc --no-deps --open
+```
+
 ## Roadmap
 
 * Add support for more programming languages
@@ -174,8 +188,8 @@ of both crates. The pre-reset history is summarized below for reference.
 **CLI & general**
 
 - Added real-time progress visualization during file discovery
-- Added configurable error handling with the `-E` / `--gather-errors` flag
-  (replacing the old `--skip-gather-errors` / `-s`); by default errors are
+- Added configurable error handling with the `-E` / `--gather-errors` flag (replacing
+  the old `--skip-gather-errors` / `-s`); by default errors are
   silently skipped, with the flag they are collected and reported
 - Added CLI flags: `--ignore-dot-dirs`, `--auto-config`, `--marker-files`;
   renamed several existing flags for clarity
