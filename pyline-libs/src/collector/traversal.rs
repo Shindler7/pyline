@@ -1,6 +1,10 @@
 //! Recursive directory traversal for [`Collector`].
 
-use crate::{Collector, CollectorResult, FileData, errors::PyLineError};
+use crate::{
+    Collector, CollectorResult, FileData,
+    collector::types::{CollectedErrors, CollectedFiles},
+    errors::PyLineError,
+};
 use async_recursion::async_recursion;
 use std::path::Path;
 use tokio::fs;
@@ -35,22 +39,29 @@ impl Collector {
     /// # }
     /// ```
     pub async fn complete(&self) -> Result<CollectorResult, PyLineError> {
-        // Parsing...
-        self.mapping_files(self.path()).await
+        let mut files = CollectedFiles::new();
+        let mut errors = CollectedErrors::new();
+
+        self.mapping_files(self.path(), &mut files, &mut errors)
+            .await?;
+
+        Ok(CollectorResult::from_collector(files, errors))
     }
 
-    /// Recursively collects files under `path` that match the configured
-    /// filters.
+    /// Recursively collects files under `path` that match the configured filters.
     #[async_recursion]
-    async fn mapping_files(&self, path: &Path) -> Result<CollectorResult, PyLineError> {
-        let mut collector_result = CollectorResult::new();
-
+    async fn mapping_files(
+        &self,
+        path: &Path,
+        files: &mut CollectedFiles,
+        errors: &mut CollectedErrors,
+    ) -> Result<(), PyLineError> {
         let mut dir_entries = match fs::read_dir(path).await {
             Ok(entries) => entries,
             Err(err) => {
                 return if self.skip_errors() {
-                    collector_result.add_err(err.into());
-                    Ok(collector_result)
+                    errors.push(err.into());
+                    Ok(())
                 } else {
                     Err(err.into())
                 };
@@ -61,7 +72,7 @@ impl Collector {
             Ok(entry) => entry,
             Err(err) => {
                 if self.skip_errors() {
-                    collector_result.add_err(err.into());
+                    errors.push(err.into());
                     continue 'collect;
                 } else {
                     return Err(err.into());
@@ -69,27 +80,33 @@ impl Collector {
             }
         } {
             let elem = entry_res.path();
-            let metadata = entry_res.metadata().await?;
+            let metadata = match entry_res.metadata().await {
+                Ok(meta) => meta,
+                Err(err) => {
+                    if self.skip_errors() {
+                        errors.push(err.into());
+                        continue;
+                    } else {
+                        return Err(err.into());
+                    }
+                }
+            };
 
             if self.is_collectable_dir(&elem) {
                 // Subfolders
-                match self.mapping_files(&elem).await {
-                    Ok(sub_dirs) => collector_result.absorb(sub_dirs),
-                    Err(err) => {
-                        if self.skip_errors() {
-                            collector_result.add_err(err);
-                        } else {
-                            return Err(err);
-                        }
+                if let Err(err) = self.mapping_files(&elem, files, errors).await {
+                    if self.skip_errors() {
+                        errors.push(err);
+                    } else {
+                        return Err(err);
                     }
                 }
             } else if self.is_valid_file(&elem) {
-                let file_data = FileData::new(elem, metadata.len());
-                collector_result.add_file(file_data);
+                files.push(FileData::new(elem, metadata.len()));
             }
         }
 
-        Ok(collector_result)
+        Ok(())
     }
 
     fn is_collectable_dir(&self, path: &Path) -> bool {

@@ -2,7 +2,6 @@
 
 use std::io::Error as IoError;
 use thiserror::Error as ThisError;
-use tokio::sync::mpsc::error::SendError;
 
 /// Errors that can occur during file scanning, parsing, and analysis.
 #[derive(Debug, ThisError)]
@@ -28,15 +27,6 @@ pub enum PyLineError {
     /// No files were found to parse.
     #[error("No files were found to parse.")]
     NoFilesForParse,
-
-    #[error("{0}")]
-    RuntimeError(String),
-}
-
-impl<T> From<SendError<T>> for PyLineError {
-    fn from(err: SendError<T>) -> Self {
-        Self::RuntimeError(err.to_string())
-    }
 }
 
 impl PyLineError {

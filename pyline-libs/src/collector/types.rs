@@ -3,7 +3,7 @@
 //! Provides type-safe representations for file names, directory names,
 //! and file extensions.
 
-use crate::collector::traits::WithDefaults;
+use crate::{FileData, collector::traits::WithDefaults, errors::PyLineError};
 use std::collections::HashSet;
 
 fn normalize_verbatim(s: String) -> Option<String> {
@@ -136,3 +136,61 @@ macro_rules! lang_defaults {
 lang_defaults!(Files);
 lang_defaults!(Dirs);
 lang_defaults!(Extensions);
+
+/// Defines a newtype wrapper around `Vec<T>` with basic collection
+/// helpers.
+///
+/// # Parameters
+///
+/// * `$name` — identifier of the generated type.
+/// * `$doc_expr` — doc string for the type.
+/// * `$ty` — element type.
+macro_rules! collection {
+    ($name: ident, $doc_expr: expr, $ty: ty) => {
+        #[doc = $doc_expr]
+        #[derive(Debug, Default)]
+        pub struct $name(Vec<$ty>);
+
+        impl $name {
+            pub fn new() -> Self {
+                Self::default()
+            }
+
+            pub fn push(&mut self, value: $ty) {
+                self.0.push(value);
+            }
+
+            pub fn iter(&self) -> impl Iterator<Item = &$ty> {
+                self.0.iter()
+            }
+
+            pub fn extend(&mut self, other: Self) {
+                self.0.extend(other.0);
+            }
+
+            pub fn inner(&self) -> &Vec<$ty> {
+                &self.0
+            }
+
+            pub fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
+
+            pub fn len(&self) -> usize {
+                self.0.len()
+            }
+        }
+    };
+}
+
+collection!(
+    CollectedFiles,
+    "Files collected during traversal.",
+    FileData
+);
+
+collection!(
+    CollectedErrors,
+    "Errors encountered during traversal.",
+    PyLineError
+);
