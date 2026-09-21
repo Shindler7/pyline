@@ -23,9 +23,8 @@ projects of any scale.
 """
 
 [dependencies]
-pyline-libs = { path = "../pyline-libs" }
 clap = { version = "4", features = ["derive"] }
-tokio = { version = "1", features = ["full"] }
+pyline-libs = { path = "../pyline-libs" }
 
 anyhow.workspace = true
 

@@ -15,11 +15,10 @@ statistics with configurable exclusions and async performance.
 """
 
 [dependencies]
-async-recursion = "1"
 phf = { version = "0.14", features = ["macros"] }
 rayon = "1"
 thiserror = "2"
-tokio = { version = "1", features = ["full"] }
+walkdir = "2"
 
 [dev-dependencies]
 uuid = { version = "1", features = ["v4"] }

@@ -8,10 +8,8 @@ mod tools;
 
 use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
-
-use pyline_libs::parser::traits::CodeParsers;
 use pyline_libs::{
-    CodeLanguage, Collector, CollectorResult, FileData,
+    CodeLanguage, CodeParsers, Collector, CollectorResult, FileData,
     collector::FileDataExt,
     errors::PyLineError,
     parser::{Python, Rust},
@@ -23,11 +21,11 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    thread,
 };
 
-#[tokio::main]
-async fn main() -> AnyhowResult<()> {
-    if let Err(e) = run().await {
+fn main() -> AnyhowResult<()> {
+    if let Err(e) = run() {
         eprintln!("\n\n{}", e);
         exit(1);
     }
@@ -36,7 +34,7 @@ async fn main() -> AnyhowResult<()> {
 }
 
 /// Runs the application: parses CLI args, collects files, and prints stats.
-async fn run() -> AnyhowResult<()> {
+fn run() -> AnyhowResult<()> {
     let cli_result = ArgsResult::from_clap()?;
 
     println!("\nSelected language: {}\n", cli_result.collector.lang());
@@ -49,7 +47,7 @@ async fn run() -> AnyhowResult<()> {
         println!("\n{}", cli_result.verbose_display());
     }
 
-    let collection = collect_files(&cli_result.collector).await?;
+    let collection = collect_files(&cli_result.collector)?;
 
     if collection.has_errors() {
         println!(
@@ -79,20 +77,20 @@ async fn run() -> AnyhowResult<()> {
 }
 
 /// Collects files via the configured [`Collector`], showing a progress spinner.
-async fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
+fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     let running = Arc::new(AtomicBool::new(true));
     let spinner_handle = {
         let running = running.clone();
-        tokio::spawn(show_dot(running))
+        thread::spawn(move || show_dot(running))
     };
 
     print!("\nGathering files for analysis... ");
     std::io::stdout().flush()?;
 
-    let collector_result = collector.complete().await;
+    let collector_result = collector.complete();
 
     running.store(false, Ordering::Relaxed);
-    let _ = spinner_handle.await?;
+    let _ = spinner_handle.join();
 
     let files_batch = collector_result?;
 

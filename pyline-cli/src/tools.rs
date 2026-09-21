@@ -8,15 +8,15 @@ use std::{
         Arc,
         atomic::{AtomicBool, Ordering},
     },
+    thread::sleep,
     time::Duration,
 };
-use tokio::time;
 
 /// Displays animated dots while `running` remains true.
 ///
 /// Outputs a growing sequence of dots (`.`) at 10 FPS to indicate
 /// ongoing activity. Stops when `running` is set to false.
-pub async fn show_dot(running: Arc<AtomicBool>) -> AnyhowResult<()> {
+pub(super) fn show_dot(running: Arc<AtomicBool>) -> AnyhowResult<()> {
     const SLEEP_DURATION: Duration = Duration::from_millis(100);
 
     while running.load(Ordering::Relaxed) {
@@ -29,7 +29,7 @@ pub async fn show_dot(running: Arc<AtomicBool>) -> AnyhowResult<()> {
                 .context("Failed to flush stdout during loading animation")?;
         }
 
-        time::sleep(SLEEP_DURATION).await;
+        sleep(SLEEP_DURATION);
     }
 
     println!();

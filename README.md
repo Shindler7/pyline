@@ -88,7 +88,7 @@ The simplest option: scan Python files with automatic configuration.
 ```shell
 $ pyline -l py -a -p d:\coderep
 
-Selected language: PYTHON, https://www.python.org/
+Selected language: Python, https://www.python.org/
 
 The files in the directory are being examined: d:\coderep
 
@@ -121,7 +121,7 @@ where a main.py file is found. Then we do this:
 ```shell
 $ pyline --lang py --auto-config -p d:\coderep --marker-files .noscan
 
-Selected language: PYTHON, https://www.python.org/
+Selected language: Python, https://www.python.org/
 
 The files in the directory are being examined: d:\coderep
 
@@ -180,7 +180,7 @@ Each crate in the workspace is versioned independently:
 #### 0.1.0
 
 Initial release under the new versioning scheme, following a full refactoring
-of both crates. The pre-reset history is summarized below for reference.
+of both crates.
 
 ## License
 

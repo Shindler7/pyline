@@ -29,6 +29,14 @@ pub enum PyLineError {
     NoFilesForParse,
 }
 
+impl From<walkdir::Error> for PyLineError {
+    fn from(err: walkdir::Error) -> Self {
+        Self::ScannerError {
+            description: err.to_string(),
+        }
+    }
+}
+
 impl PyLineError {
     /// Creates a [`PyLineError::ScannerError`] with the given description.
     ///
