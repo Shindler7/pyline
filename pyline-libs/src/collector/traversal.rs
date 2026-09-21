@@ -108,7 +108,7 @@ impl Collector {
 
         #[cfg(not(target_os = "windows"))]
         let dirs_exclude = self
-            .exclude_dirs
+            .exclude_dirs()
             .iter()
             .any(|dir| dir.eq_ignore_ascii_case(dir_name));
 
@@ -151,7 +151,7 @@ impl Collector {
             .any(|excluded| excluded.eq_ignore_ascii_case(file_name));
 
         #[cfg(not(target_os = "windows"))]
-        self.exclude_files
+        self.exclude_files()
             .iter()
             .any(|excluded| excluded.eq(file_name))
     }
