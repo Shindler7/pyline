@@ -15,8 +15,9 @@ use pyline_libs::{
     parser::{Python, Rust},
 };
 use std::{
+    fmt::Display,
     io::Write,
-    process::exit,
+    process::ExitCode,
     sync::{
         Arc,
         atomic::{AtomicBool, Ordering},
@@ -24,17 +25,7 @@ use std::{
     thread,
 };
 
-fn main() -> AnyhowResult<()> {
-    if let Err(e) = run() {
-        eprintln!("\n\n{}", e);
-        exit(1);
-    }
-
-    Ok(())
-}
-
-/// Runs the application: parses CLI args, collects files, and prints stats.
-fn run() -> AnyhowResult<()> {
+fn main() -> AnyhowResult<ExitCode> {
     let cli_result = ArgsResult::from_clap()?;
 
     println!("\nSelected language: {}\n", cli_result.collector.lang());
@@ -47,7 +38,19 @@ fn run() -> AnyhowResult<()> {
         println!("\n{}", cli_result.verbose_display());
     }
 
+    run(&cli_result)?;
+
+    Ok(ExitCode::SUCCESS)
+}
+
+/// Runs the application: collects files, and prints stats.
+fn run(cli_result: &ArgsResult) -> AnyhowResult<()> {
     let collection = collect_files(&cli_result.collector)?;
+    if collection.has_files() {
+        println!("OK.\n");
+    } else {
+        println!("NO FILES.\n");
+    }
 
     if collection.has_errors() {
         println!(
@@ -61,17 +64,18 @@ fn run() -> AnyhowResult<()> {
         }
     }
 
-    if !collection.has_files() {
-        return Ok(());
+    if collection.has_files() {
+        println!("Successfully gathered {} files.", collection.num_files());
+
+        if cli_result.verbose {
+            println!("\n{}", collection.files().join_verbose(""));
+        }
+
+        match cli_result.collector.lang() {
+            CodeLanguage::Python => analyze::<Python>(collection.files()),
+            CodeLanguage::Rust => analyze::<Rust>(collection.files()),
+        }?;
     }
-
-    println!(" Successfully gathered {} files.", collection.num_files());
-
-    if cli_result.verbose {
-        println!("\n{}", collection.files().join_verbose(""));
-    }
-
-    analyze_files(&cli_result, collection.files())?;
 
     Ok(())
 }
@@ -92,39 +96,14 @@ fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     running.store(false, Ordering::Relaxed);
     let _ = spinner_handle.join();
 
-    let files_batch = collector_result?;
-
-    if files_batch.has_files() {
-        print!("OK.");
-    } else {
-        print!("NO FILES.");
-    }
-
-    println!();
-
-    Ok(files_batch)
+    Ok(collector_result?)
 }
 
 /// Parses the collected files and prints keyword statistics.
-fn analyze_files(cli_result: &ArgsResult, files: &[FileData]) -> Result<(), PyLineError> {
-    print!("\nGathering code stats... ");
-
-    match cli_result.collector.lang() {
-        CodeLanguage::Python => {
-            let mut python_stats = Python::new();
-            python_stats.parse(files)?;
-
-            print!("OK.");
-            println!("\n{}\n", python_stats);
-        }
-        CodeLanguage::Rust => {
-            let mut rust_stats = Rust::new();
-            rust_stats.parse(files)?;
-
-            print!("OK.");
-            println!("\n{}\n", rust_stats);
-        }
-    }
+fn analyze<P: CodeParsers + Display>(files: &[FileData]) -> Result<(), PyLineError> {
+    let mut parser = P::new();
+    parser.parse(files)?;
+    println!("\n{parser}\n");
 
     Ok(())
 }

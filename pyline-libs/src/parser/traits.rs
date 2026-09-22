@@ -8,13 +8,12 @@ use crate::{collector::models::FileData, errors::PyLineError};
 /// [`impl_lang_parser!`](crate::impl_lang_parser), which provides the
 /// common file-handling and statistics logic. Language-specific line
 /// parsing is implemented separately.
-pub trait CodeParsers {
-    type Code: Default;
-
+pub trait CodeParsers
+where
+    Self: Sized,
+{
     /// Creates an empty parser.
-    fn new() -> Self::Code {
-        Default::default()
-    }
+    fn new() -> Self;
 
     /// Parses the given files, updating the accumulated statistics.
     ///
@@ -23,8 +22,8 @@ pub trait CodeParsers {
     /// Returns [`PyLineError`] if parsing fails and errors are not skipped.
     fn parse(&mut self, files: &[FileData]) -> Result<(), PyLineError>;
 
-    fn parse_file(file: &FileData) -> Result<Self::Code, PyLineError>;
+    fn parse_file(file: &FileData) -> Result<Self, PyLineError>;
 
     /// Merges `other` into `self`.
-    fn merge(&mut self, other: Self::Code);
+    fn merge(&mut self, other: Self);
 }

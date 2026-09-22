@@ -101,7 +101,9 @@ macro_rules! impl_lang_parser {
         $Lang:ident
     ) => {
         impl $crate::CodeParsers for $Lang {
-            type Code = $Lang;
+            fn new() -> $Lang {
+                $Lang::default()
+            }
 
             fn merge(&mut self, other: Self) {
                 self.stats.merge(other.stats);
