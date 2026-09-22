@@ -22,6 +22,11 @@ where
     /// Returns [`PyLineError`] if parsing fails and errors are not skipped.
     fn parse(&mut self, files: &[FileData]) -> Result<(), PyLineError>;
 
+    /// Parses a single file, returning its statistics.
+    ///
+    /// # Errors
+    ///
+    /// Returns [`PyLineError`] if the file cannot be opened or parsed.
     fn parse_file(file: &FileData) -> Result<Self, PyLineError>;
 
     /// Merges `other` into `self`.

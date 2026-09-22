@@ -74,6 +74,7 @@ macro_rules! define_lang_struct {
         pub struct $name {
             /// File statistics (lines, files, code lines).
             pub stats: $crate::CodeFilesStat,
+
             /// Keyword frequency counts.
             pub keywords: std::collections::HashMap<String, usize>,
         }
@@ -167,6 +168,8 @@ macro_rules! impl_lang_parser {
         }
 
         impl $Lang {
+
+            /// Builds a parser from a single file's parsed statistics.
             pub(crate) fn from_parse(
                 lines_total: usize,
                 code_lines: usize,

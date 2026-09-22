@@ -53,4 +53,8 @@ impl CollectorResult {
     pub fn num_errors(&self) -> usize {
         self.errors.len()
     }
+    
+    pub fn is_empty(&self) -> bool {
+        self.result.is_empty() && self.errors.is_empty()
+    }
 }
