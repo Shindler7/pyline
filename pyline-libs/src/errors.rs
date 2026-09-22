@@ -19,14 +19,14 @@ pub enum PyLineError {
 
     /// An error during source parsing.
     #[error("{description}")]
-    CounterError {
+    ParseError {
         /// Human-readable description.
         description: String,
     },
 
     /// No files were found to parse.
     #[error("No files were found to parse.")]
-    NoFilesForParse,
+    NoFilesFound,
 }
 
 impl From<walkdir::Error> for PyLineError {
@@ -53,17 +53,17 @@ impl PyLineError {
         }
     }
 
-    /// Creates a [`PyLineError::CounterError`] with the given description.
+    /// Creates a [`PyLineError::ParseError`] with the given description.
     ///
     /// # Examples
     ///
     /// ```
     /// use pyline_libs::errors::PyLineError;
     ///
-    /// let err = PyLineError::counter_error("unexpected token");
+    /// let err = PyLineError::parse_error("unexpected token");
     /// ```
-    pub fn counter_error(description: impl Into<String>) -> PyLineError {
-        Self::CounterError {
+    pub fn parse_error(description: impl Into<String>) -> PyLineError {
+        Self::ParseError {
             description: description.into(),
         }
     }

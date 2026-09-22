@@ -119,7 +119,7 @@ macro_rules! impl_lang_parser {
                 use rayon::prelude::*;
 
                 if files.is_empty() {
-                    return Err($crate::errors::PyLineError::NoFilesForParse);
+                    return Err($crate::errors::PyLineError::NoFilesFound);
                 }
 
                 let final_stats = files
