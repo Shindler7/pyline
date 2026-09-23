@@ -6,13 +6,7 @@ readme.workspace = true
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
 edition = "2024"
 license.workspace = true
-description = """
-PyLine - Codebase Analyzer
-
-A Rust-powered tool for analyzing code's projects with precision filtering capabilities.
-Scan directories, collect files based on multiple criteria, and extract detailed code
-statistics with configurable exclusions and async performance.
-"""
+description = "Rust-powered tool for analyzing codebases with precise file filtering and keyword statistics."
 
 [dependencies]
 phf = { version = "0.14", features = ["macros"] }

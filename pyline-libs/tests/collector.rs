@@ -1,7 +1,12 @@
+//! Integration tests for [`Collector`].
+
+#![allow(unused_crate_dependencies)]
+
 use pyline_libs::{CodeLanguage, collector::config::Collector, errors::PyLineError};
 use std::{fs, fs::File, path::PathBuf};
 use uuid::Uuid;
 
+/// Creates a temporary directory with a fixed set of files and dirs.
 fn setup_test_dir() -> PathBuf {
     let uuid_time = Uuid::new_v4();
 

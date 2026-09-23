@@ -7,6 +7,9 @@
 //!
 //! Custom error types live in [`errors`].
 
+#[cfg(test)]
+use uuid as _;
+
 pub mod collector;
 pub mod errors;
 pub mod parser;
