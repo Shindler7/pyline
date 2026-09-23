@@ -8,14 +8,8 @@ mod tools;
 
 use crate::{cli::ArgsResult, tools::show_dot};
 use anyhow::Result as AnyhowResult;
-use pyline_libs::{
-    CodeLanguage, CodeParsers, Collector, CollectorResult, FileData,
-    collector::FileDataExt,
-    errors::PyLineError,
-    parser::{Python, Rust},
-};
+use pyline_libs::{Collector, CollectorResult, collector::FileDataExt, parser::run as parser_run};
 use std::{
-    fmt::Display,
     io::Write,
     process::ExitCode,
     sync::{
@@ -71,10 +65,8 @@ fn run(cli_result: &ArgsResult) -> AnyhowResult<()> {
             println!("\n{}", collection.files().join_verbose(""));
         }
 
-        match cli_result.collector.lang() {
-            CodeLanguage::Python => analyze::<Python>(collection.files()),
-            CodeLanguage::Rust => analyze::<Rust>(collection.files()),
-        }?;
+        let result = parser_run(collection.files(), cli_result.collector.lang())?;
+        println!("\n{result}\n");
     }
 
     Ok(())
@@ -97,13 +89,4 @@ fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     let _ = spinner_handle.join();
 
     Ok(collector_result?)
-}
-
-/// Parses the collected files and prints keyword statistics.
-fn analyze<P: CodeParsers + Display>(files: &[FileData]) -> Result<(), PyLineError> {
-    let mut parser = P::new();
-    parser.parse(files)?;
-    println!("\n{parser}\n");
-
-    Ok(())
 }

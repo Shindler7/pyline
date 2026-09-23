@@ -1,6 +1,9 @@
 //! Shared types for language parser and file statistics.
 
-use crate::define_lang_struct;
+use crate::parser::{
+    CodeParser,
+    {py::PythonParser, rust::RustParser},
+};
 use std::fmt::{Display, Formatter};
 
 /// Supported source languages.
@@ -20,6 +23,70 @@ impl Display for CodeLanguage {
             CodeLanguage::Python => f.write_str("Python, https://www.python.org/"),
             CodeLanguage::Rust => f.write_str("Rust, https://rust-lang.org/"),
         }
+    }
+}
+
+impl CodeLanguage {
+    pub fn get_parser(&self) -> Box<dyn CodeParser> {
+        match self {
+            CodeLanguage::Python => Box::new(PythonParser),
+            CodeLanguage::Rust => Box::new(RustParser),
+        }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct ParseResults {
+    /// File statistics (lines, files, code lines).
+    pub stats: CodeFilesStat,
+
+    /// Keyword frequency counts.
+    pub keywords: std::collections::HashMap<String, usize>,
+}
+
+impl ParseResults {
+    pub(crate) fn new() -> Self {
+        ParseResults::default()
+    }
+
+    pub fn merge(&mut self, other: Self) {
+        self.stats.merge(other.stats);
+        for (keyword, count) in other.keywords {
+            *self.keywords.entry(keyword).or_insert(0) += count;
+        }
+    }
+
+    pub(crate) fn from_parse(
+        lines_total: usize,
+        code_lines: usize,
+        keywords: std::collections::HashMap<String, usize>,
+    ) -> Self {
+        Self {
+            stats: CodeFilesStat {
+                lines_total,
+                code_lines,
+                num_files_total: 1,
+                num_files_invalid: 0,
+            },
+            keywords,
+        }
+    }
+}
+
+impl Display for ParseResults {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.stats)?;
+        if !self.keywords.is_empty() {
+            write!(f, "\n\nKeywords:")?;
+
+            let mut sorted_keywords: Vec<_> = self.keywords.iter().collect();
+            sorted_keywords.sort_by(|a, b| b.1.cmp(a.1));
+            for (keyword, count) in sorted_keywords {
+                write!(f, "\n  {} = {}", keyword, count)?;
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -44,21 +111,6 @@ impl CodeFilesStat {
         self.lines_total += other.lines_total;
         self.code_lines += other.code_lines;
     }
-
-    /// Like [`Self::merge`], but takes `other` by reference.
-    pub fn merge_ref(&mut self, other: &CodeFilesStat) {
-        self.num_files_total += other.num_files_total;
-        self.num_files_invalid += other.num_files_invalid;
-        self.lines_total += other.lines_total;
-        self.code_lines += other.code_lines;
-    }
-
-    /// Returns the sum of `self` and `other`.
-    pub fn combined(self, other: CodeFilesStat) -> Self {
-        let mut result = self;
-        result.merge(other);
-        result
-    }
 }
 
 impl Display for CodeFilesStat {
@@ -72,6 +124,3 @@ impl Display for CodeFilesStat {
         Ok(())
     }
 }
-
-define_lang_struct!(Python);
-define_lang_struct!(Rust);

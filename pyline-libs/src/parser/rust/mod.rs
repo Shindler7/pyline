@@ -10,3 +10,5 @@
 
 pub(crate) mod base;
 pub(crate) mod engine;
+
+pub use engine::RustParser;
