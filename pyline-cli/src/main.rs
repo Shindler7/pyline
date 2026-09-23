@@ -40,26 +40,26 @@ fn main() -> AnyhowResult<ExitCode> {
 /// Runs the application: collects files, and prints stats.
 fn run(cli_result: &ArgsResult) -> AnyhowResult<()> {
     let collection = collect_files(&cli_result.collector)?;
-    if collection.has_files() {
-        println!("OK.\n");
-    } else {
+    if collection.files().is_empty() {
         println!("NO FILES.\n");
+    } else {
+        println!("OK.\n");
     }
 
     if collection.has_errors() {
         println!(
             "\nWARNINGS! During the gathering process, {} errors occurred.",
-            collection.num_errors()
+            collection.errors().len()
         );
         if cli_result.verbose {
             for err in collection.errors() {
-                eprintln!("\n{}", err);
+                eprintln!("\n{err}");
             }
         }
     }
 
-    if collection.has_files() {
-        println!("Successfully gathered {} files.", collection.num_files());
+    if !collection.files().is_empty() {
+        println!("Successfully gathered {} files.", collection.files().len());
 
         if cli_result.verbose {
             println!("\n{}", collection.files().join_verbose(""));
@@ -76,8 +76,8 @@ fn run(cli_result: &ArgsResult) -> AnyhowResult<()> {
 fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     let running = Arc::new(AtomicBool::new(true));
     let spinner_handle = {
-        let running = running.clone();
-        thread::spawn(move || show_dot(running))
+        let running = Arc::clone(&running);
+        thread::spawn(move || show_dot(&running))
     };
 
     print!("\nGathering files for analysis... ");

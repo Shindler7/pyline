@@ -10,7 +10,8 @@ use crate::{
 
 use std::{collections::HashMap, fs::File, io::BufRead, io::BufReader};
 
-pub struct RustParser;
+/// Rust-specific parser.
+pub(crate) struct RustParser;
 
 impl CodeParser for RustParser {
     fn new() -> Self {
@@ -18,7 +19,7 @@ impl CodeParser for RustParser {
     }
 
     fn parse_code_lines(&self, cursor: &mut BufReader<File>) -> Result<ParseResults, PyLineError> {
-        let mut lines_totals = 0;
+        let mut lines_total = 0;
         let mut code_lines = 0;
         let mut in_block_comment = false;
 
@@ -33,7 +34,7 @@ impl CodeParser for RustParser {
                 break; // EOF.
             }
 
-            lines_totals += 1;
+            lines_total += 1;
 
             let has_code = process_line(&line, &mut in_block_comment, &mut local_keywords);
             if has_code {
@@ -41,14 +42,13 @@ impl CodeParser for RustParser {
             }
         }
 
-        let mut final_keywords: HashMap<String, usize> =
-            HashMap::with_capacity(local_keywords.len());
-        for (k, v) in local_keywords {
-            final_keywords.insert(k.to_string(), v);
-        }
+        let final_keywords: HashMap<String, usize> = local_keywords
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect();
 
-        Ok(ParseResults::from_parse(
-            lines_totals,
+        Ok(ParseResults::from_file(
+            lines_total,
             code_lines,
             final_keywords,
         ))
@@ -79,7 +79,7 @@ fn process_line(
         }
 
         match ch {
-            ' ' | '\t' | '\r' | '\n' | '\u{00A0}' => continue,
+            ' ' | '\t' | '\r' | '\n' | '\u{00A0}' => {}
             '/' => {
                 if let Some(&(_, next_ch)) = iter.peek() {
                     if next_ch == '/' {
@@ -181,15 +181,7 @@ fn skip_raw_string(iter: &mut std::iter::Peekable<std::str::CharIndices<'_>>) {
         let mut current_hashes = 0;
 
         for (_, ch) in iter.by_ref() {
-            if !in_closing_sequence {
-                if ch == '"' {
-                    in_closing_sequence = true;
-                    if hashes == 0 {
-                        break;
-                    }
-                    current_hashes = 0;
-                }
-            } else {
+            if in_closing_sequence {
                 if ch == '#' {
                     current_hashes += 1;
                     if current_hashes == hashes {
@@ -200,13 +192,19 @@ fn skip_raw_string(iter: &mut std::iter::Peekable<std::str::CharIndices<'_>>) {
                 } else {
                     in_closing_sequence = false;
                 }
+            } else if ch == '"' {
+                in_closing_sequence = true;
+                if hashes == 0 {
+                    break;
+                }
+                current_hashes = 0;
             }
         }
     }
 }
 
 /// Looks up `word` in [`RUST_KEYWORDS`].
-#[inline(always)]
+#[inline]
 fn parse_keywords(word: &str) -> Option<RustKeywords> {
     RUST_KEYWORDS.get(word).copied()
 }

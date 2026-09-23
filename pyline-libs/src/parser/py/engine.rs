@@ -14,7 +14,8 @@ use std::{
     io::{BufRead, BufReader},
 };
 
-pub struct PythonParser;
+/// Python-specific parser.
+pub(crate) struct PythonParser;
 
 impl CodeParser for PythonParser {
     fn new() -> Self {
@@ -48,7 +49,7 @@ impl CodeParser for PythonParser {
             buf.clear();
         }
 
-        Ok(ParseResults::from_parse(
+        Ok(ParseResults::from_file(
             lines_totals,
             code_lines,
             final_keywords,

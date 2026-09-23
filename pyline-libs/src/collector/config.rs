@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 ///
 /// Defines which files and directories are included or excluded during
 /// the collection. All fields have defaults.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct Collector {
     /// Root directory path from which to start file of collection.
     path: PathBuf,
@@ -151,7 +151,7 @@ impl Collector {
     fn validate_no_dot_dirs(&self, exclude_dirs: Option<&Dirs>) -> Result<(), PyLineError> {
         let dirs = exclude_dirs.unwrap_or(&self.exclude_dirs);
 
-        if self.ignore_dot_dirs && dirs.iter().any(|s| s.starts_with(".")) {
+        if self.ignore_dot_dirs && dirs.iter().any(|s| s.starts_with('.')) {
             return Err(PyLineError::scanner_error(
                 "Cannot exclude dot-directories (e.g., '.git') \
                     via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
@@ -168,6 +168,7 @@ impl Collector {
     /// If a directory contains any of these files, the directory and all its
     /// subdirectories are skipped during the collection. Useful for ignoring
     /// directories marked by `.gitignore`, `.noscan`, and similar files.
+    #[must_use]
     pub fn with_marker_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -198,6 +199,7 @@ impl Collector {
     ///     .with_exclude_files(["README.md", "LICENSE", ".gitignore"]);
     /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
+    #[must_use]
     pub fn with_exclude_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -227,6 +229,7 @@ impl Collector {
     ///     .with_extensions(["rs", ".toml"]);
     /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
+    #[must_use]
     pub fn with_extensions<I, S>(mut self, ext: I) -> Self
     where
         I: IntoIterator<Item = S>,
@@ -274,6 +277,7 @@ impl Collector {
     ///
     /// When `true`, the collection continues with accessible entries;
     /// when `false` (default), it halts on the first error.
+    #[must_use]
     pub fn with_skip_errors(mut self, skip: bool) -> Self {
         self.skip_errors = skip;
         self

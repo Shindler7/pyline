@@ -35,7 +35,7 @@ fn test_basic_collection() -> Result<(), PyLineError> {
         .with_exclude_files(["README.md"])
         .complete()?;
 
-    assert_eq!(files.num_files(), 1);
+    assert_eq!(files.files().len(), 1);
     assert!(files.files()[0].path().ends_with("example.py"));
 
     Ok(())
@@ -51,7 +51,7 @@ fn test_include_dot_dirs() -> Result<(), PyLineError> {
         .complete()?;
 
     // now we should see file from .git too
-    assert_eq!(files.num_files(), 2);
+    assert_eq!(files.files().len(), 2);
 
     let collected_files: Vec<_> = files
         .files()

@@ -4,7 +4,7 @@ use phf::phf_map;
 
 /// Rust language keywords and primitive type names.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub enum RustKeywords {
+pub(crate) enum RustKeywords {
     // Primitive types
     Bool,
     Char,

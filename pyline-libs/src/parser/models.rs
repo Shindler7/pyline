@@ -4,7 +4,10 @@ use crate::parser::{
     CodeParser,
     {py::PythonParser, rust::RustParser},
 };
-use std::fmt::{Display, Formatter};
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+};
 
 /// Supported source languages.
 #[derive(Debug, Default, Clone)]
@@ -27,6 +30,7 @@ impl Display for CodeLanguage {
 }
 
 impl CodeLanguage {
+    /// Returns a parser instance for this language.
     pub fn get_parser(&self) -> Box<dyn CodeParser> {
         match self {
             CodeLanguage::Python => Box::new(PythonParser),
@@ -35,38 +39,42 @@ impl CodeLanguage {
     }
 }
 
+/// Aggregated parse results: file statistics and keyword counts.
 #[derive(Debug, Default, Clone)]
 pub struct ParseResults {
     /// File statistics (lines, files, code lines).
-    pub stats: CodeFilesStat,
+    pub stats: CodeFilesStats,
 
     /// Keyword frequency counts.
-    pub keywords: std::collections::HashMap<String, usize>,
+    pub keywords: HashMap<String, usize>,
 }
 
 impl ParseResults {
+    /// Creates an empty result.
     pub(crate) fn new() -> Self {
         ParseResults::default()
     }
 
-    pub fn merge(&mut self, other: Self) {
-        self.stats.merge(other.stats);
+    /// Merges `other` into `self`.
+    pub(crate) fn merge(&mut self, other: Self) {
+        self.stats.merge(&other.stats);
         for (keyword, count) in other.keywords {
             *self.keywords.entry(keyword).or_insert(0) += count;
         }
     }
 
-    pub(crate) fn from_parse(
-        lines_total: usize,
+    /// Builds results for a single parsed file.
+    pub(crate) fn from_file(
+        total_lines: usize,
         code_lines: usize,
-        keywords: std::collections::HashMap<String, usize>,
+        keywords: HashMap<String, usize>,
     ) -> Self {
         Self {
-            stats: CodeFilesStat {
-                lines_total,
+            stats: CodeFilesStats {
+                total_lines,
                 code_lines,
-                num_files_total: 1,
-                num_files_invalid: 0,
+                total_files: 1,
+                invalid_files: 0,
             },
             keywords,
         }
@@ -82,7 +90,7 @@ impl Display for ParseResults {
             let mut sorted_keywords: Vec<_> = self.keywords.iter().collect();
             sorted_keywords.sort_by(|a, b| b.1.cmp(a.1));
             for (keyword, count) in sorted_keywords {
-                write!(f, "\n  {} = {}", keyword, count)?;
+                write!(f, "\n  {keyword} = {count}")?;
             }
         }
 
@@ -92,34 +100,34 @@ impl Display for ParseResults {
 
 /// Aggregate statistics over a set of analyzed files.
 #[derive(Debug, Default, Clone)]
-pub struct CodeFilesStat {
+pub struct CodeFilesStats {
     /// Total number of files.
-    pub num_files_total: usize,
+    pub total_files: usize,
     /// Number of files that could not be read or parsed.
-    pub num_files_invalid: usize,
+    pub invalid_files: usize,
     /// Total number of lines.
-    pub lines_total: usize,
+    pub total_lines: usize,
     /// Number of lines that contain code.
     pub code_lines: usize,
 }
 
-impl CodeFilesStat {
+impl CodeFilesStats {
     /// Adds `other` into `self`.
-    pub fn merge(&mut self, other: CodeFilesStat) {
-        self.num_files_total += other.num_files_total;
-        self.num_files_invalid += other.num_files_invalid;
-        self.lines_total += other.lines_total;
+    pub fn merge(&mut self, other: &CodeFilesStats) {
+        self.total_files += other.total_files;
+        self.invalid_files += other.invalid_files;
+        self.total_lines += other.total_lines;
         self.code_lines += other.code_lines;
     }
 }
 
-impl Display for CodeFilesStat {
+impl Display for CodeFilesStats {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Files: {}", self.num_files_total)?;
-        writeln!(f, "Lines: {}", self.lines_total)?;
+        writeln!(f, "Files: {}", self.total_files)?;
+        writeln!(f, "Lines: {}", self.total_lines)?;
         write!(f, "  of which are code lines: {}", self.code_lines)?;
-        if self.num_files_invalid > 0 {
-            write!(f, "\nFailed to read files: {}", self.num_files_invalid)?;
+        if self.invalid_files > 0 {
+            write!(f, "\nFailed to read files: {}", self.invalid_files)?;
         }
         Ok(())
     }

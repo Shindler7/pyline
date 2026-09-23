@@ -11,6 +11,7 @@ use clap::{Parser, ValueEnum};
 use pyline_libs::{CodeLanguage, collector::Collector};
 use std::{env, path::PathBuf};
 
+#[allow(clippy::struct_excessive_bools)]
 #[derive(Parser, Debug)]
 #[clap(about = "A high-performance CLI tool for analyzing codebases with \
     intelligent filtering and detailed statistics collection.")]

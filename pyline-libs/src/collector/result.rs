@@ -9,7 +9,7 @@ use crate::{
 /// Result of a file collection operation.
 ///
 /// Holds successfully collected files and any errors encountered.
-#[derive(Default)]
+#[derive(Debug, Default)]
 pub struct CollectorResult {
     /// Successfully collected files.
     result: CollectedFiles,
@@ -18,25 +18,17 @@ pub struct CollectorResult {
     errors: CollectedErrors,
 }
 
-impl CollectorResult {
-    /// Builds a result from collected files and errors.
-    pub fn from_collector(result: CollectedFiles, errors: CollectedErrors) -> Self {
+impl From<(CollectedFiles, CollectedErrors)> for CollectorResult {
+    #[inline]
+    fn from((result, errors): (CollectedFiles, CollectedErrors)) -> Self {
         Self { result, errors }
     }
+}
 
+impl CollectorResult {
     /// Returns a reference to the collected files.
     pub fn files(&self) -> &[FileData] {
         self.result.inner()
-    }
-
-    /// Returns `true` if any files were collected.
-    pub fn has_files(&self) -> bool {
-        !self.result.is_empty()
-    }
-
-    /// Returns the number of collected files.
-    pub fn num_files(&self) -> usize {
-        self.result.len()
     }
 
     /// Returns a reference to the error list.
@@ -49,11 +41,7 @@ impl CollectorResult {
         !self.errors.is_empty()
     }
 
-    /// Returns the number of errors encountered.
-    pub fn num_errors(&self) -> usize {
-        self.errors.len()
-    }
-
+    /// Returns `true` if no files were collected and no errors occurred.
     pub fn is_empty(&self) -> bool {
         self.result.is_empty() && self.errors.is_empty()
     }

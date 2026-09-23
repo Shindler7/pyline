@@ -13,4 +13,4 @@ pub mod parser;
 pub mod utils;
 
 pub use collector::{Collector, CollectorResult, models::FileData};
-pub use parser::{CodeFilesStat, CodeLanguage, CodeParser};
+pub use parser::{CodeFilesStats, CodeLanguage, CodeParser};

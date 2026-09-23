@@ -6,14 +6,18 @@ pub(crate) mod py;
 pub(crate) mod rust;
 pub mod traits;
 
-pub use models::{CodeFilesStat, CodeLanguage, ParseResults};
+pub use models::{CodeFilesStats, CodeLanguage, ParseResults};
 pub use traits::CodeParser;
 
 use crate::{FileData, errors::PyLineError};
+use rayon::prelude::*;
 
+/// Parses `files` with the parser for `lang` and returns aggregate results.
+///
+/// # Errors
+///
+/// Returns [`PyLineError::NoFilesFound`] if `files` is empty.
 pub fn run(files: &[FileData], lang: &CodeLanguage) -> Result<ParseResults, PyLineError> {
-    use rayon::prelude::*;
-
     if files.is_empty() {
         return Err(PyLineError::NoFilesFound);
     }
@@ -23,14 +27,11 @@ pub fn run(files: &[FileData], lang: &CodeLanguage) -> Result<ParseResults, PyLi
     let final_stats = files
         .par_iter()
         .fold(ParseResults::new, |mut acc, file| {
-            match parser.parse_file(file) {
-                Ok(file_stats) => {
-                    acc.merge(file_stats);
-                }
-                Err(_) => {
-                    acc.stats.num_files_invalid += 1;
-                    acc.stats.num_files_total += 1;
-                }
+            if let Ok(files_stat) = parser.parse_file(file) {
+                acc.merge(files_stat);
+            } else {
+                acc.stats.invalid_files += 1;
+                acc.stats.total_files += 1;
             }
 
             acc
@@ -40,8 +41,5 @@ pub fn run(files: &[FileData], lang: &CodeLanguage) -> Result<ParseResults, PyLi
             thread_acc_a
         });
 
-    let mut final_results = ParseResults::new();
-    final_results.merge(final_stats);
-
-    Ok(final_results)
+    Ok(final_stats)
 }

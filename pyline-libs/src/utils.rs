@@ -1,5 +1,6 @@
 //! Miscellaneous helpers.
 
+#[allow(clippy::cast_precision_loss)]
 /// Formats a byte count as a human-readable string using binary prefixes
 /// (`KB`, `MB`, `GB`, `TB`).
 ///
@@ -35,14 +36,15 @@ pub fn format_file_size(bytes: u64) -> String {
     let (label, divisor) = UNITS
         .iter()
         .find(|(_, div)| bytes >= *div)
-        .expect("UNITS covers all values >= 1024");
+        .copied()
+        .unwrap_or(("KB", 1 << 10));
 
-    let size = bytes as f64 / *divisor as f64;
+    let size = bytes as f64 / divisor as f64;
 
     if size < 10.0 {
-        format!("{:.1} {}", size, label)
+        format!("{size:.1} {label}")
     } else {
-        format!("{:.0} {}", size, label)
+        format!("{size:.0} {label}")
     }
 }
 

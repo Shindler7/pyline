@@ -32,7 +32,7 @@ impl Collector {
     ///     .with_exclude_dirs(["target"])?
     ///     .complete()?;
     ///
-    /// println!("Found {} files", result.num_files());
+    /// println!("Found {} files", result.files().len());
     /// # Ok(())
     /// # }
     /// ```
@@ -57,7 +57,7 @@ impl Collector {
                         if self.is_valid_file(path) {
                             match entry.metadata() {
                                 Ok(meta) => {
-                                    files.push(FileData::new(path.to_path_buf(), meta.len()))
+                                    files.push(FileData::new(path.to_path_buf(), meta.len()));
                                 }
                                 Err(err) => {
                                     self.handle_error(err, &mut errors)?;
@@ -71,7 +71,7 @@ impl Collector {
             }
         }
 
-        Ok(CollectorResult::from_collector(files, errors))
+        Ok((files, errors).into())
     }
 
     #[inline]
@@ -90,12 +90,11 @@ impl Collector {
     }
 
     fn is_dir_excluded(&self, path: &Path) -> bool {
-        let dir_name = match path.file_name().and_then(|s| s.to_str()) {
-            Some(name) => name,
-            None => return false,
+        let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) else {
+            return false;
         };
 
-        if self.ignore_dot_dirs() && dir_name.starts_with(".") {
+        if self.ignore_dot_dirs() && dir_name.starts_with('.') {
             return true;
         }
 
@@ -136,8 +135,7 @@ impl Collector {
     fn is_file_excluded(&self, file: &Path) -> bool {
         file.file_name()
             .and_then(|name| name.to_str())
-            .map(|name| self.is_excluded_contains_this(name))
-            .unwrap_or(false)
+            .is_some_and(|name| self.is_excluded_contains_this(name))
     }
 
     fn is_excluded_contains_this(&self, file_name: &str) -> bool {
@@ -157,7 +155,6 @@ impl Collector {
     fn is_valid_extension(&self, file: &Path) -> bool {
         file.extension()
             .and_then(|ext| ext.to_str())
-            .map(|ext| self.extensions().iter().any(|e| e == ext))
-            .unwrap_or(false)
+            .is_some_and(|ext| self.extensions().iter().any(|e| e == ext))
     }
 }

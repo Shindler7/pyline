@@ -137,8 +137,7 @@ lang_defaults!(Files);
 lang_defaults!(Dirs);
 lang_defaults!(Extensions);
 
-/// Defines a new type wrapper around `Vec<T>` with basic collection
-/// helpers.
+/// Defines a new type wrapper around `Vec<T>` with basic collection helpers.
 ///
 /// # Parameters
 ///
@@ -152,30 +151,37 @@ macro_rules! collection {
         pub struct $name(Vec<$ty>);
 
         impl $name {
+            /// Creates an empty collection.
             pub fn new() -> Self {
                 Self::default()
             }
 
+            /// Appends `value` to the collection.
             pub fn push(&mut self, value: $ty) {
                 self.0.push(value);
             }
 
+            /// Returns an iterator over the elements.
             pub fn iter(&self) -> impl Iterator<Item = &$ty> {
                 self.0.iter()
             }
 
+            /// Appends all elements of `other` to `self`.
             pub fn extend(&mut self, other: Self) {
                 self.0.extend(other.0);
             }
 
+            /// Returns a reference to the inner vector.
             pub fn inner(&self) -> &Vec<$ty> {
                 &self.0
             }
 
+            /// Returns `true` if the collection is empty.
             pub fn is_empty(&self) -> bool {
                 self.0.is_empty()
             }
 
+            /// Returns the number of elements.
             pub fn len(&self) -> usize {
                 self.0.len()
             }

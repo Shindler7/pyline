@@ -7,4 +7,4 @@
 pub(crate) mod base;
 pub(crate) mod engine;
 
-pub use engine::PythonParser;
+pub(crate) use engine::PythonParser;

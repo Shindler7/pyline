@@ -140,6 +140,12 @@ Keywords:
 **Note**: In the second example, the number of files may be lower if
 directories containing main.py are excluded from scanning.
 
+Short boolean flags can be combined: `-ia` is equivalent to `-i -a`.
+
+```shell
+pyline -l rust -ia
+```
+
 ## Documentation
 
 API documentation for both crates can be built locally:

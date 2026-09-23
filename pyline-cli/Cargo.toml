@@ -31,3 +31,6 @@ anyhow.workspace = true
 [[bin]]
 name = "pyline"
 path = "src/main.rs"
+
+[lints]
+workspace = true
