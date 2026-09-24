@@ -1,6 +1,6 @@
 //! Integration tests for [`Collector`].
 
-#![allow(unused_crate_dependencies)]
+#![allow(unused_crate_dependencies, clippy::unwrap_used, clippy::expect_used)]
 
 use pyline_libs::{CodeLanguage, collector::config::Collector, errors::PyLineError};
 use std::{fs, fs::File, path::PathBuf};
@@ -10,7 +10,7 @@ use uuid::Uuid;
 fn setup_test_dir() -> PathBuf {
     let uuid_time = Uuid::new_v4();
 
-    let tmp_dir = std::env::temp_dir().join(format!("collector_test_{}", uuid_time));
+    let tmp_dir = std::env::temp_dir().join(format!("collector_test_{uuid_time}"));
     // let _ = fs::remove_dir_all(&tmp_dir).await;
     fs::create_dir_all(&tmp_dir).unwrap();
     dbg!(&tmp_dir);

@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 #[test]
 fn file_data_display_format() {
     let file = FileData::new(PathBuf::from("main.rs"), 100);
-    let text = format!("{}", file);
+    let text = format!("{file}");
     assert!(text.contains("main.rs"));
     assert!(text.contains("100"));
 }
