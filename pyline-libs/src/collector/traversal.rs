@@ -6,7 +6,7 @@ use crate::{
     errors::PyLineError,
 };
 use std::path::Path;
-use walkdir::WalkDir;
+use walkdir::{DirEntry, WalkDir};
 
 impl Collector {
     /// Traverses the directory tree rooted at [`Collector::path`], applying
@@ -42,7 +42,7 @@ impl Collector {
 
         let walker = WalkDir::new(self.path()).into_iter().filter_entry(|entry| {
             if entry.file_type().is_dir() {
-                !self.is_dir_excluded(entry.path())
+                !self.is_dir_excluded(entry)
             } else {
                 true
             }
@@ -89,43 +89,41 @@ impl Collector {
         }
     }
 
-    fn is_dir_excluded(&self, path: &Path) -> bool {
-        let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) else {
+    fn is_dir_excluded(&self, dir_entry: &DirEntry) -> bool {
+        let Some(dir) = dir_entry.file_name().to_str() else {
             return false;
         };
 
-        if self.ignore_dot_dirs() && dir_name.starts_with('.') {
+        if self.ignore_dot_dirs() && dir.starts_with('.') {
             return true;
         }
 
-        let dirs_exclude = self.exclude_dirs().iter().any(|dir| {
+        if self.exclude_dirs().iter().any(|dir| {
             #[cfg(target_os = "windows")]
             {
-                dir.eq_ignore_ascii_case(dir_name)
+                dir.eq_ignore_ascii_case(dir)
             }
 
             #[cfg(not(target_os = "windows"))]
             {
-                dir.eq_ignore_ascii_case(dir_name)
+                dir.eq_ignore_ascii_case(dir)
             }
-        });
-
-        if dirs_exclude {
+        }) {
             return true;
         }
 
-        // Exclude by marker files.
-        self.should_exclude_dir_by_marker_file(path)
+        self.should_exclude_dir_by_marker_file(dir_entry)
     }
 
     /// Returns `true` if `dir_path` contains any of the configured marker files.
-    fn should_exclude_dir_by_marker_file(&self, dir_path: &Path) -> bool {
-        let markers = self.marker_files();
-        if markers.is_empty() {
-            return false;
-        }
-
-        markers.iter().any(|marker| dir_path.join(marker).is_file())
+    fn should_exclude_dir_by_marker_file(&self, dir_entry: &DirEntry) -> bool {
+        let mut path = dir_entry.path().to_path_buf();
+        self.marker_files().iter().any(|marker_file| {
+            path.push(marker_file);
+            let exists = path.exists();
+            path.pop();
+            exists
+        })
     }
 
     fn is_valid_file(&self, file: &Path) -> bool {
