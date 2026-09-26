@@ -106,9 +106,9 @@ impl From<CodeLang> for CodeLanguage {
 }
 
 #[derive(Default)]
-pub(super) struct ArgsResult {
-    pub(super) collector: Collector,
-    pub(super) verbose: bool,
+pub(crate) struct ArgsResult {
+    pub(crate) collector: Collector,
+    pub(crate) verbose: bool,
 }
 
 impl ArgsResult {
@@ -116,7 +116,7 @@ impl ArgsResult {
     ///
     /// Returns an error if the input path is invalid or the collector
     /// configuration is rejected.
-    pub(super) fn from_clap() -> AnyhowResult<Self> {
+    pub(crate) fn from_clap() -> AnyhowResult<Self> {
         let args = Args::parse();
         let path = parse_path(args.path)?;
 
