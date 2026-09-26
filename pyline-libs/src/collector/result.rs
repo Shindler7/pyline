@@ -28,12 +28,12 @@ impl From<(CollectedFiles, CollectedErrors)> for CollectorResult {
 impl CollectorResult {
     /// Returns a reference to the collected files.
     pub fn files(&self) -> &[FileData] {
-        self.result.inner()
+        self.result.as_ref()
     }
 
     /// Returns a reference to the error list.
     pub fn errors(&self) -> &[PyLineError] {
-        self.errors.inner()
+        self.errors.as_ref()
     }
 
     /// Returns `true` if any errors occurred during collection.

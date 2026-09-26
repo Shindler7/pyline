@@ -4,23 +4,27 @@
 //! and file extensions.
 
 use crate::{FileData, collector::traits::WithDefaults, errors::PyLineError};
-use std::collections::HashSet;
+use std::{borrow::Cow, collections::HashSet};
 
-fn normalize_verbatim(s: String) -> Option<String> {
-    (!s.trim().is_empty()).then_some(s)
+fn normalize_verbatim(s: &str) -> Option<Cow<'_, str>> {
+    let cleaned = s.trim().trim_matches('/');
+
+    (!cleaned.is_empty()).then(|| cleaned.into())
 }
 
-fn normalize_ext(mut s: String) -> Option<String> {
-    if s.is_ascii() {
-        s.make_ascii_lowercase();
+fn normalize_ext(s: &str) -> Option<Cow<'_, str>> {
+    let cleaned = s.trim_start_matches('.');
+
+    let cleaned = match normalize_verbatim(cleaned)? {
+        Cow::Owned(o) => return Some(Cow::Owned(o.to_lowercase())),
+        Cow::Borrowed(b) => b,
+    };
+
+    if cleaned.chars().any(char::is_uppercase) {
+        Some(Cow::Owned(cleaned.to_lowercase()))
     } else {
-        s = s.to_lowercase();
+        Some(Cow::Borrowed(cleaned))
     }
-
-    let dots = s.bytes().take_while(|&b| b == b'.').count();
-    s.drain(..dots);
-
-    normalize_verbatim(s)
 }
 
 /// Defines a new type wrapper around `HashSet<String>` with the given
@@ -48,9 +52,15 @@ macro_rules! string_set_type {
             ///
             /// Returns `true` if the value was newly inserted, `false` if it was
             /// a duplicate or normalized to `None`.
-            pub fn insert<S: Into<String>>(&mut self, raw: S) -> bool {
-                match $normalize(raw.into()) {
-                    Some(s) => self.0.insert(s),
+            pub fn insert<S: AsRef<str>>(&mut self, raw: S) -> bool {
+                match $normalize(raw.as_ref()) {
+                    Some(normalized) => {
+                        let norm_str: &str = &normalized;
+                        if self.0.contains(norm_str) {
+                            return false;
+                        }
+                        self.0.insert(normalized.into_owned())
+                    }
                     None => false,
                 }
             }
@@ -71,7 +81,7 @@ macro_rules! string_set_type {
             }
         }
 
-        impl<T: Into<String>> Extend<T> for $name {
+        impl<T: AsRef<str>> Extend<T> for $name {
             fn extend<I: IntoIterator<Item = T>>(&mut self, iter: I) {
                 for raw in iter {
                     self.insert(raw);
@@ -81,7 +91,7 @@ macro_rules! string_set_type {
 
         impl<T> FromIterator<T> for $name
         where
-            T: Into<String>,
+            T: AsRef<str>,
         {
             fn from_iter<I>(iter: I) -> Self
             where
@@ -106,10 +116,9 @@ string_set_type!(Dirs, "A set of directory names.", normalize_verbatim);
 string_set_type!(Extensions, "A set of file extensions.", normalize_ext);
 
 impl Extensions {
-    /// Returns all extensions joined by `sep`, sorted for deterministic
-    /// output.
+    /// Returns all extensions joined by `sep`, sorted for deterministic output.
     pub fn join(&self, sep: &str) -> String {
-        let mut v: Vec<&str> = self.0.iter().map(String::as_str).collect();
+        let mut v: Vec<&str> = self.iter().collect();
         v.sort_unstable();
         v.join(sep)
     }
@@ -170,20 +179,13 @@ macro_rules! collection {
             pub fn extend(&mut self, other: Self) {
                 self.0.extend(other.0);
             }
+        }
 
-            /// Returns a reference to the inner vector.
-            pub fn inner(&self) -> &Vec<$ty> {
+        impl std::ops::Deref for $name {
+            type Target = [$ty];
+
+            fn deref(&self) -> &Self::Target {
                 &self.0
-            }
-
-            /// Returns `true` if the collection is empty.
-            pub fn is_empty(&self) -> bool {
-                self.0.is_empty()
-            }
-
-            /// Returns the number of elements.
-            pub fn len(&self) -> usize {
-                self.0.len()
             }
         }
     };

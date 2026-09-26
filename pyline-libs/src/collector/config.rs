@@ -138,7 +138,7 @@ impl Collector {
     pub fn with_exclude_dirs<I, S>(mut self, dirs: I) -> Result<Self, PyLineError>
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
         let exclude_dirs: Dirs = dirs.into_iter().collect();
 
@@ -172,7 +172,7 @@ impl Collector {
     pub fn with_marker_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
         self.marker_files.extend(files);
         self
@@ -203,7 +203,7 @@ impl Collector {
     pub fn with_exclude_files<I, S>(mut self, files: I) -> Self
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
         self.exclude_files.extend(files);
         self
@@ -233,7 +233,7 @@ impl Collector {
     pub fn with_extensions<I, S>(mut self, ext: I) -> Self
     where
         I: IntoIterator<Item = S>,
-        S: Into<String>,
+        S: AsRef<str>,
     {
         self.extensions.extend(ext);
         self
