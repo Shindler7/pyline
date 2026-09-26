@@ -83,7 +83,7 @@ fn collect_files(collector: &Collector) -> AnyhowResult<CollectorResult> {
     print!("\nGathering files for analysis... ");
     std::io::stdout().flush()?;
 
-    let collector_result = collector.complete();
+    let collector_result = collector.collect();
 
     running.store(false, Ordering::Relaxed);
     let _ = spinner_handle.join();

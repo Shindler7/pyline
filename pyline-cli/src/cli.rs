@@ -121,9 +121,9 @@ impl ArgsResult {
         let path = parse_path(args.path)?;
 
         let collector = Collector::new(&path, args.lang.into(), args.auto_config)
-            .with_ignore_dot_dirs(args.ignore_dot_dirs)?
+            .with_ignore_dot_dirs(args.ignore_dot_dirs)
             .with_extensions(args.ext)
-            .with_exclude_dirs(args.exclude_dirs)?
+            .with_exclude_dirs(args.exclude_dirs)
             .with_marker_files(args.marker_files)
             .with_exclude_files(args.exclude_files)
             .with_skip_errors(args.skip_errors);

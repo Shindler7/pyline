@@ -9,7 +9,7 @@ use std::{borrow::Cow, collections::HashSet};
 fn normalize_verbatim(s: &str) -> Option<Cow<'_, str>> {
     let cleaned = s.trim().trim_matches('/');
 
-    (!cleaned.is_empty()).then(|| cleaned.into())
+    (!cleaned.is_empty()).then_some(Cow::Borrowed(cleaned))
 }
 
 fn normalize_ext(s: &str) -> Option<Cow<'_, str>> {
@@ -79,6 +79,11 @@ macro_rules! string_set_type {
             pub fn is_empty(&self) -> bool {
                 self.0.is_empty()
             }
+
+            /// Returns the stored values as vec.
+            pub fn as_vec(&self) -> Vec<&str> {
+                self.0.iter().map(String::as_str).collect()
+            }
         }
 
         impl<T: AsRef<str>> Extend<T> for $name {
@@ -106,6 +111,15 @@ macro_rules! string_set_type {
         impl AsRef<HashSet<String>> for $name {
             fn as_ref(&self) -> &HashSet<String> {
                 &self.0
+            }
+        }
+
+        impl std::fmt::Display for $name {
+            fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+                let mut items: Vec<&str> = self.as_vec();
+                items.sort_unstable();
+
+                write!(f, "[{}]", items.join(", "))
             }
         }
     };

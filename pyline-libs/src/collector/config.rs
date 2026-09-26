@@ -7,7 +7,6 @@
 use crate::{
     CodeLanguage,
     collector::types::{Dirs, Extensions, Files},
-    errors::PyLineError,
 };
 use std::path::{Path, PathBuf};
 
@@ -76,8 +75,8 @@ impl Collector {
     ///
     /// let collector = Collector::new(&path, CodeLanguage::Python, false)
     ///     .with_extensions(["py"])
-    ///     .with_ignore_dot_dirs(false).unwrap()
-    ///     .with_exclude_dirs(["target", "node_modules"]).unwrap();
+    ///     .with_ignore_dot_dirs(false)
+    ///     .with_exclude_dirs(["target", "node_modules"]);
     /// ```
     ///
     /// By default, `ignore_dot_dirs` is enabled (`true`): all directories
@@ -132,35 +131,19 @@ impl Collector {
     /// let path = PathBuf::from("/path");
     ///
     /// let collector = Collector::new(&path, CodeLanguage::Python, false)
-    ///     .with_exclude_dirs(["node_modules", "target"])?;
-    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
+    ///     .with_exclude_dirs(["node_modules", "target"]);
     /// ```
-    pub fn with_exclude_dirs<I, S>(mut self, dirs: I) -> Result<Self, PyLineError>
+    #[must_use]
+    pub fn with_exclude_dirs<I, S>(mut self, dirs: I) -> Self
     where
         I: IntoIterator<Item = S>,
         S: AsRef<str>,
     {
         let exclude_dirs: Dirs = dirs.into_iter().collect();
 
-        self.validate_no_dot_dirs(Some(&exclude_dirs))?;
         self.exclude_dirs.extend(exclude_dirs.iter());
 
-        Ok(self)
-    }
-
-    fn validate_no_dot_dirs(&self, exclude_dirs: Option<&Dirs>) -> Result<(), PyLineError> {
-        let dirs = exclude_dirs.unwrap_or(&self.exclude_dirs);
-
-        if self.ignore_dot_dirs && dirs.iter().any(|s| s.starts_with('.')) {
-            return Err(PyLineError::scanner_error(
-                "Cannot exclude dot-directories (e.g., '.git') \
-                    via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
-                    Consider removing them from `exclude_dirs`, or disable \
-                    `ignore_dot_dirs` with `.ignore_dot_dirs(false)`.",
-            ));
-        }
-
-        Ok(())
+        self
     }
 
     /// Sets marker files that exclude their parent directory.
@@ -197,7 +180,6 @@ impl Collector {
     ///
     /// let collector = Collector::new(&path, CodeLanguage::Python, false)
     ///     .with_exclude_files(["README.md", "LICENSE", ".gitignore"]);
-    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
     #[must_use]
     pub fn with_exclude_files<I, S>(mut self, files: I) -> Self
@@ -227,7 +209,6 @@ impl Collector {
     ///
     /// let collector = Collector::new(&path, CodeLanguage::Rust, false)
     ///     .with_extensions(["rs", ".toml"]);
-    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
     /// ```
     #[must_use]
     pub fn with_extensions<I, S>(mut self, ext: I) -> Self
@@ -262,15 +243,12 @@ impl Collector {
     /// let path = PathBuf::from("/path");
     ///
     /// let collector = Collector::new(&path, CodeLanguage::Python, false)
-    ///     .with_ignore_dot_dirs(true)?;
-    /// # Ok::<(), pyline_libs::errors::PyLineError>(())
+    ///     .with_ignore_dot_dirs(true);
     /// ```
-    pub fn with_ignore_dot_dirs(mut self, ignore: bool) -> Result<Self, PyLineError> {
-        if ignore {
-            self.validate_no_dot_dirs(None)?;
-        }
+    #[must_use]
+    pub fn with_ignore_dot_dirs(mut self, ignore: bool) -> Self {
         self.ignore_dot_dirs = ignore;
-        Ok(self)
+        self
     }
 
     /// Sets whether access and read errors are skipped.

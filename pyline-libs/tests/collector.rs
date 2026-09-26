@@ -36,9 +36,9 @@ fn test_basic_collection() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
-        .with_ignore_dot_dirs(true)?
+        .with_ignore_dot_dirs(true)
         .with_exclude_files(["README.md"])
-        .complete()?;
+        .collect()?;
 
     assert_eq!(files.files().len(), 1);
     assert!(files.files()[0].path().ends_with("example.py"));
@@ -52,8 +52,8 @@ fn test_include_dot_dirs() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
-        .with_ignore_dot_dirs(false)?
-        .complete()?;
+        .with_ignore_dot_dirs(false)
+        .collect()?;
 
     // now we should see file from .git too
     assert_eq!(files.files().len(), 2);
@@ -80,9 +80,9 @@ fn test_exclude_dirs_works() -> Result<(), PyLineError> {
 
     let files = Collector::new(&root, CodeLanguage::Python, false)
         .with_extensions(["py"])
-        .with_exclude_dirs(["node_modules"])?
-        .with_ignore_dot_dirs(false)?
-        .complete()?;
+        .with_exclude_dirs(["node_modules"])
+        .with_ignore_dot_dirs(false)
+        .collect()?;
 
     assert!(
         !files
@@ -101,5 +101,5 @@ fn test_exclude_dot_dir_error() {
     // Этот вызов должен возвращать ошибку из-за .git в exclude_dirs.
     let result = Collector::new(&root, CodeLanguage::Python, false).with_exclude_dirs([".git"]);
 
-    assert!(result.is_err());
+    assert!(result.collect().is_err());
 }

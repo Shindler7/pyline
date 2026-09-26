@@ -29,14 +29,18 @@ impl Collector {
     ///
     /// let result = Collector::new(&path, CodeLanguage::Rust, true)
     ///     .with_extensions(["rs", "toml"])
-    ///     .with_exclude_dirs(["target"])?
-    ///     .complete()?;
+    ///     .with_exclude_dirs(["target"])
+    ///     .collect()?;
     ///
     /// println!("Found {} files", result.files().len());
     /// # Ok(())
     /// # }
     /// ```
-    pub fn complete(&self) -> Result<CollectorResult, PyLineError> {
+    pub fn collect(&self) -> Result<CollectorResult, PyLineError> {
+        // Validators.
+        self.validate_no_dot_dirs()?;
+
+        // Executing.
         let mut files = CollectedFiles::new();
         let mut errors = CollectedErrors::new();
 
@@ -74,6 +78,19 @@ impl Collector {
         Ok((files, errors).into())
     }
 
+    fn validate_no_dot_dirs(&self) -> Result<(), PyLineError> {
+        if self.ignore_dot_dirs() && self.exclude_dirs().iter().any(|s| s.starts_with('.')) {
+            return Err(PyLineError::scanner_error(
+                "Cannot exclude dot-directories (e.g., '.git') \
+                    via `exclude_dirs` while `ignore_dot_dirs` is enabled. \
+                    Consider removing them from `exclude_dirs`, or disable \
+                    `ignore_dot_dirs` with `.ignore_dot_dirs(false)`.",
+            ));
+        }
+
+        Ok(())
+    }
+
     #[inline]
     fn handle_error(
         &self,
@@ -90,25 +107,15 @@ impl Collector {
     }
 
     fn is_dir_excluded(&self, dir_entry: &DirEntry) -> bool {
-        let Some(dir) = dir_entry.file_name().to_str() else {
+        let Some(dir_name) = dir_entry.file_name().to_str() else {
             return false;
         };
 
-        if self.ignore_dot_dirs() && dir.starts_with('.') {
+        if dir_entry.depth() > 0 && self.ignore_dot_dirs() && dir_name.starts_with('.') {
             return true;
         }
 
-        if self.exclude_dirs().iter().any(|dir| {
-            #[cfg(target_os = "windows")]
-            {
-                dir.eq_ignore_ascii_case(dir)
-            }
-
-            #[cfg(not(target_os = "windows"))]
-            {
-                dir.eq_ignore_ascii_case(dir)
-            }
-        }) {
+        if contains_this(self.exclude_dirs().iter(), dir_name) {
             return true;
         }
 
@@ -137,22 +144,35 @@ impl Collector {
     }
 
     fn is_excluded_contains_this(&self, file_name: &str) -> bool {
-        self.exclude_files().iter().any(|excluded| {
-            #[cfg(target_os = "windows")]
-            {
-                excluded.eq_ignore_ascii_case(file_name)
-            }
-
-            #[cfg(not(target_os = "windows"))]
-            {
-                excluded.eq(file_name)
-            }
-        })
+        contains_this(self.exclude_files().iter(), file_name)
     }
 
     fn is_valid_extension(&self, file: &Path) -> bool {
         file.extension()
             .and_then(|ext| ext.to_str())
-            .is_some_and(|ext| self.extensions().iter().any(|e| e == ext))
+            .is_some_and(|ext| {
+                self.extensions()
+                    .iter()
+                    .any(|e| e.eq_ignore_ascii_case(ext))
+            })
     }
+}
+
+/// Returns `true` if `elem` matches any item in `collection`.
+///
+/// Comparison is case-insensitive on Windows and exact elsewhere.
+#[inline]
+fn contains_this<I, S>(collection: I, elem: &str) -> bool
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    collection.into_iter().any(|excluded| {
+        let s = excluded.as_ref();
+        if cfg!(target_os = "windows") {
+            s.eq_ignore_ascii_case(elem)
+        } else {
+            s.eq(elem)
+        }
+    })
 }
