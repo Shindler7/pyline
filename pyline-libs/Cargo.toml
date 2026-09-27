@@ -1,6 +1,6 @@
 [package]
 name = "pyline-libs"
-version = "0.1.0"
+version.workspace = true
 authors.workspace = true
 readme.workspace = true
 keywords = ["analyzer", "code-analysis", "cli", "statistics", "code-quality"]
@@ -13,6 +13,7 @@ phf = { version = "0.14", features = ["macros"] }
 rayon = "1"
 thiserror = "2"
 walkdir = "2"
+wildmatch = "2"
 
 [dev-dependencies]
 uuid = { version = "1", features = ["v4"] }

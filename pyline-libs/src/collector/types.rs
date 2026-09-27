@@ -5,6 +5,7 @@
 
 use crate::{FileData, collector::traits::WithDefaults, errors::PyLineError};
 use std::{borrow::Cow, collections::HashSet};
+use wildmatch::WildMatch;
 
 fn normalize_verbatim(s: &str) -> Option<Cow<'_, str>> {
     let cleaned = s.trim().trim_matches('/');
@@ -27,15 +28,13 @@ fn normalize_ext(s: &str) -> Option<Cow<'_, str>> {
     }
 }
 
-/// Defines a new type wrapper around `HashSet<String>` with the given
-/// name, doc comment, and normalization function.
+/// Defines a new type-like collection of exact strings and glob patterns.
 ///
 /// # Parameters
 ///
-/// * `$name` — identifier of the generated type.
-/// * `$doc_expr` — doc string for the type.
-/// * `$normalize` — function applied to each inserted value; returning
-///   `None` skips the value.
+/// - `$name` — identifier of the generated type.
+/// - `$doc_expr` — doc string for the type.
+/// - `$normalize` — normalization applied to each inserted value.
 macro_rules! string_set_type {
     (
         $name: ident,
@@ -44,8 +43,14 @@ macro_rules! string_set_type {
 
     ) => {
         #[doc = $doc_expr]
-        #[derive(Debug, Default, PartialEq, Eq)]
-        pub struct $name(HashSet<String>);
+        #[derive(Debug, Default, Clone)]
+        pub struct $name {
+            /// Exact strings matched verbatim.
+            exact: HashSet<String>,
+
+            /// Glob patterns matched with wildcard semantics.
+            globs: Vec<WildMatch>,
+        }
 
         impl $name {
             /// Inserts a value after normalization.
@@ -56,10 +61,20 @@ macro_rules! string_set_type {
                 match $normalize(raw.as_ref()) {
                     Some(normalized) => {
                         let norm_str: &str = &normalized;
-                        if self.0.contains(norm_str) {
+                        if self.exact.contains(norm_str) {
                             return false;
                         }
-                        self.0.insert(normalized.into_owned())
+
+                        if norm_str.contains('*') {
+                            let wild_match = if cfg!(target_os = "windows") {
+                                wildmatch::WildMatch::new_case_insensitive(norm_str)
+                            } else {
+                                wildmatch::WildMatch::new(norm_str)
+                            };
+                            self.globs.push(wild_match);
+                        }
+
+                        self.exact.insert(normalized.into_owned())
                     }
                     None => false,
                 }
@@ -67,22 +82,30 @@ macro_rules! string_set_type {
 
             /// Iterates over the stored values.
             pub fn iter(&self) -> impl Iterator<Item = &str> {
-                self.0.iter().map(String::as_str)
+                self.exact.iter().map(String::as_str)
             }
 
             /// Consumes `self` and returns the underlying set.
             pub fn into_inner(self) -> HashSet<String> {
-                self.0
+                self.exact
+            }
+
+            /// Returns `true` if the collection contains a string matching `input`.
+            ///
+            /// Exact matches are checked first; if none are found, `input` is
+            /// tested against all stored glob patterns.
+            pub fn has_matches(&self, input: &str) -> bool {
+                self.exact.contains(input) || self.globs.iter().any(|wm| wm.matches(input))
             }
 
             /// Returns `true` if the collection is empty.
             pub fn is_empty(&self) -> bool {
-                self.0.is_empty()
+                self.exact.is_empty()
             }
 
             /// Returns the stored values as vec.
             pub fn as_vec(&self) -> Vec<&str> {
-                self.0.iter().map(String::as_str).collect()
+                self.exact.iter().map(String::as_str).collect()
             }
         }
 
@@ -110,7 +133,7 @@ macro_rules! string_set_type {
 
         impl AsRef<HashSet<String>> for $name {
             fn as_ref(&self) -> &HashSet<String> {
-                &self.0
+                &self.exact
             }
         }
 

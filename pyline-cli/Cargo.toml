@@ -1,6 +1,6 @@
 [package]
 name = "pyline"
-version.workspace = true
+version = "0.1.1"
 authors.workspace = true
 readme.workspace = true
 edition = "2024"

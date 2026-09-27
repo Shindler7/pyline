@@ -35,8 +35,25 @@ struct Args {
     path: Option<PathBuf>,
 
     /// Directories to exclude from the collection.
+    ///
+    /// Supports glob patterns (e.g., `node_*`, `tmp*`).
     #[clap[short='x', long, value_name = "DIRECTORIES", value_delimiter = ',', num_args = 1..]]
     exclude_dirs: Vec<String>,
+
+    /// Files to exclude from the collection.
+    ///
+    /// Only the stem is matched; the extension is ignored. For example, `README`
+    /// excludes `README.md` and `README.txt` alike. Supports glob patterns
+    /// (e.g., `test_*`, `parse*`).
+    #[clap(short = 'X', long, value_name = "FILENAMES", value_delimiter = ',', num_args = 1..)]
+    exclude_files: Vec<String>,
+
+    /// File extensions to include in the collection. Can be specified multiple times.
+    ///
+    /// The language's basic extensions (e.g., `.py` for Python) are always included
+    /// alongside any explicitly provided ones. Supports glob patterns (e.g., `p*`).
+    #[clap(short, long, value_name = "EXTENSION", value_delimiter = ',', num_args = 1..)]
+    ext: Vec<String>,
 
     /// Marker files that cause their parent directories to be excluded
     /// from traversal.
@@ -55,17 +72,6 @@ struct Args {
     /// by this flag.
     #[clap(short, long)]
     ignore_dot_dirs: bool,
-
-    /// File extensions to include in the collection. Can be specified multiple times.
-    ///
-    /// The language's basic extensions (e.g., `.py` for Python) are always
-    /// included alongside any explicitly provided ones.
-    #[clap(short, long, value_name = "EXTENSION", value_delimiter = ',', num_args = 1..)]
-    ext: Vec<String>,
-
-    /// Files to exclude from the collection.
-    #[clap(short = 'X', long, value_name = "FILENAMES", value_delimiter = ',', num_args = 1..)]
-    exclude_files: Vec<String>,
 
     /// Silently skip access/read errors instead of collecting them.
     #[clap(short = 'E', long = "skip-errors")]

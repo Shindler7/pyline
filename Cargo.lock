@@ -289,7 +289,7 @@ dependencies = [
 
 [[package]]
 name = "pyline"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "anyhow",
  "clap",
@@ -298,13 +298,14 @@ dependencies = [
 
 [[package]]
 name = "pyline-libs"
-version = "0.1.0"
+version = "0.1.1"
 dependencies = [
  "phf",
  "rayon",
  "thiserror",
  "uuid",
  "walkdir",
+ "wildmatch",
 ]
 
 [[package]]
@@ -523,6 +524,12 @@ checksum = "81941cd78d0c92026c33e5e01312845a4cb1e9af3407f9134b100dd03144103e"
 dependencies = [
  "unicode-ident",
 ]
+
+[[package]]
+name = "wildmatch"
+version = "2.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29333c3ea1ba8b17211763463ff24ee84e41c78224c16b001cd907e663a38c68"
 
 [[package]]
 name = "winapi-util"

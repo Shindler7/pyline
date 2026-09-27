@@ -12,12 +12,11 @@ code. The project consists of a console binary `pyline-cli` and a library crate
     - Exclude specific directories (`--exclude-dirs`)
     - Skip directories containing marker files (`--marker-files`)
     - Automatic dot-directory filtering (`--ignore-dot-dirs`)
-- **Flexible file filtering** by extensions (`--ext`) and filenames (
-  `--exclude-files`)
-- **Detailed statistics** including line counts, code lines, and keyword
-  frequencies
-- **Verbose mode** for debugging and detailed progress information (
-  `--verbose`)
+- **Flexible file filtering** by extensions (`--ext`) and filenames (`--exclude-files`)
+- **Glob patterns** for filters (`--ext`, `--exclude-dirs`, `--exclude-files`,
+  `--marker-files`)
+- **Detailed statistics** including line counts, code lines, and keyword frequencies
+- **Verbose mode** for debugging and detailed progress information (`--verbose`)
 
 ### Supported Languages
 
@@ -86,7 +85,7 @@ cargo run -- --help
 The simplest option: scan Python files with automatic configuration.
 
 ```shell
-$ pyline -l py -a -p d:\coderep
+$ pyline -l py -aiE -p d:\coderep
 
 Selected language: Python, https://www.python.org/
 
@@ -174,14 +173,26 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 
 Each crate in the workspace is versioned independently:
 
-* **`pyline-cli`** — `0.1.0`
-* **`pyline-libs`** — `0.1.0`
+* **`pyline-cli`** — `0.1.1`
+* **`pyline-libs`** — `0.1.1`
 
 > **Note:** Versioning was reset to `0.1.0` after a major refactoring.
 > The previous `0.4.x` / `0.3.x` history was discarded as premature —
 > the project is now being versioned anew from a clean baseline.
 
 ### Changelog
+
+#### 0.1.1
+
+**pyline-libs**
+
+- Added glob-pattern matching for file and directory filters (`wildmatch`).
+- Updated `string_set_type!` macro; `Files`, `Dirs`, and `Extensions` now
+  support both exact strings and wildcard patterns.
+
+**pyline-cli**
+
+- Clarified `--help` text for filters that accept glob patterns
 
 #### 0.1.0
 
