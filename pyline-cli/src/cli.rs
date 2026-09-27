@@ -36,22 +36,24 @@ struct Args {
 
     /// Directories to exclude from the collection.
     ///
-    /// Supports glob patterns (e.g., `node_*`, `tmp*`).
+    /// Supports wildcards: `*` matches any sequence, `?` matches a single character
+    /// (e.g., `node_*`, `cache?`).
     #[clap[short='x', long, value_name = "DIRECTORIES", value_delimiter = ',', num_args = 1..]]
     exclude_dirs: Vec<String>,
 
     /// Files to exclude from the collection.
     ///
     /// Only the stem is matched; the extension is ignored. For example, `README`
-    /// excludes `README.md` and `README.txt` alike. Supports glob patterns
-    /// (e.g., `test_*`, `parse*`).
+    /// excludes `README.md` and `README.txt` alike. Supports wildcards: `*` matches any
+    /// sequence, `?` matches a single character (e.g., `test_*`, `v?`).
     #[clap(short = 'X', long, value_name = "FILENAMES", value_delimiter = ',', num_args = 1..)]
     exclude_files: Vec<String>,
 
     /// File extensions to include in the collection. Can be specified multiple times.
     ///
     /// The language's basic extensions (e.g., `.py` for Python) are always included
-    /// alongside any explicitly provided ones. Supports glob patterns (e.g., `p*`).
+    /// alongside any explicitly provided ones. Supports wildcards: `*` matches any
+    /// sequence, `?` matches a single character (e.g., `p?`, `*ml`).
     #[clap(short, long, value_name = "EXTENSION", value_delimiter = ',', num_args = 1..)]
     ext: Vec<String>,
 

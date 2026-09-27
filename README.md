@@ -186,9 +186,9 @@ Each crate in the workspace is versioned independently:
 
 **pyline-libs**
 
-- Added glob-pattern matching for file and directory filters (`wildmatch`).
-- Updated `string_set_type!` macro; `Files`, `Dirs`, and `Extensions` now
-  support both exact strings and wildcard patterns.
+- Added glob matching (`*`, `?`) to file, directory, and extension filters.
+- Updated `string_set_type!`; `Files`, `Dirs`, and `Extensions` now support
+  both exact strings and wildcard patterns.
 
 **pyline-cli**
 

@@ -65,7 +65,7 @@ macro_rules! string_set_type {
                             return false;
                         }
 
-                        if norm_str.contains('*') {
+                        if norm_str.contains(['*', '?']) {
                             let wild_match = if cfg!(target_os = "windows") {
                                 wildmatch::WildMatch::new_case_insensitive(norm_str)
                             } else {
