@@ -7,24 +7,25 @@ use crate::{FileData, collector::traits::WithDefaults, errors::PyLineError};
 use std::{borrow::Cow, collections::HashSet};
 use wildmatch::WildMatch;
 
+/// Trims whitespace and slashes; returns `None` if the result is empty.
 fn normalize_verbatim(s: &str) -> Option<Cow<'_, str>> {
     let cleaned = s.trim().trim_matches('/');
 
     (!cleaned.is_empty()).then_some(Cow::Borrowed(cleaned))
 }
 
+/// Strips leading dots, trims, and lowercases if needed.
+///
+/// Returns `None` if the result is empty.
 fn normalize_ext(s: &str) -> Option<Cow<'_, str>> {
     let cleaned = s.trim_start_matches('.');
 
-    let cleaned = match normalize_verbatim(cleaned)? {
-        Cow::Owned(o) => return Some(Cow::Owned(o.to_lowercase())),
-        Cow::Borrowed(b) => b,
-    };
+    let cleaned_cow = normalize_verbatim(cleaned)?;
 
-    if cleaned.chars().any(char::is_uppercase) {
-        Some(Cow::Owned(cleaned.to_lowercase()))
+    if cleaned_cow.as_ref().chars().any(char::is_uppercase) {
+        Some(Cow::Owned(cleaned_cow.to_lowercase()))
     } else {
-        Some(Cow::Borrowed(cleaned))
+        Some(cleaned_cow)
     }
 }
 
@@ -58,23 +59,26 @@ macro_rules! string_set_type {
             /// Returns `true` if the value was newly inserted, `false` if it was
             /// a duplicate or normalized to `None`.
             pub fn insert<S: AsRef<str>>(&mut self, raw: S) -> bool {
-                match $normalize(raw.as_ref()) {
+                match Self::normalize(raw.as_ref()) {
                     Some(normalized) => {
                         let norm_str: &str = &normalized;
                         if self.exact.contains(norm_str) {
                             return false;
                         }
 
-                        if norm_str.contains(['*', '?']) {
+                        let result = if norm_str.contains(['*', '?']) {
                             let wild_match = if cfg!(target_os = "windows") {
                                 wildmatch::WildMatch::new_case_insensitive(norm_str)
                             } else {
                                 wildmatch::WildMatch::new(norm_str)
                             };
                             self.globs.push(wild_match);
-                        }
+                            true
+                        } else {
+                            self.exact.insert(normalized.into_owned())
+                        };
 
-                        self.exact.insert(normalized.into_owned())
+                        result
                     }
                     None => false,
                 }
@@ -95,7 +99,11 @@ macro_rules! string_set_type {
             /// Exact matches are checked first; if none are found, `input` is
             /// tested against all stored glob patterns.
             pub fn has_matches(&self, input: &str) -> bool {
-                self.exact.contains(input) || self.globs.iter().any(|wm| wm.matches(input))
+                let Some(normalized) = Self::normalize(input) else {
+                    return false;
+                };
+                self.exact.contains(normalized.as_ref())
+                    || self.globs.iter().any(|wm| wm.matches(normalized.as_ref()))
             }
 
             /// Returns `true` if the collection is empty.
@@ -106,6 +114,12 @@ macro_rules! string_set_type {
             /// Returns the stored values as vec.
             pub fn as_vec(&self) -> Vec<&str> {
                 self.exact.iter().map(String::as_str).collect()
+            }
+
+            /// Normalizes `input` using this type's normalization rule.
+            #[inline]
+            pub fn normalize(input: &str) -> Option<Cow<'_, str>> {
+                $normalize(input)
             }
         }
 

@@ -52,8 +52,11 @@ struct Args {
     /// File extensions to include in the collection. Can be specified multiple times.
     ///
     /// The language's basic extensions (e.g., `.py` for Python) are always included
-    /// alongside any explicitly provided ones. Supports wildcards: `*` matches any
-    /// sequence, `?` matches a single character (e.g., `p?`, `*ml`).
+    /// alongside any explicitly provided ones. Extensions are normalized to lowercase
+    /// and a leading dot is ignored, so `PY`, `.Py`, and `py` are equivalent.
+    ///
+    /// Supports wildcards: `*` matches any sequence, `?` matches a single character
+    /// (e.g., `p?`, `*ml`). Wildcards are matched after normalization.
     #[clap(short, long, value_name = "EXTENSION", value_delimiter = ',', num_args = 1..)]
     ext: Vec<String>,
 
